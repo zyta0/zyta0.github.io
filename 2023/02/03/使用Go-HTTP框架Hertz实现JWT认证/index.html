@@ -1,285 +1,399 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
+
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="keywords" content="Hexo Theme Redefine">
-    <meta name="description" content="Hexo Theme Redefine">
-    <meta name="author" content="zyta0">
-    <link rel="canonical" href="http://example.com/2023/02/03/%E4%BD%BF%E7%94%A8Go-HTTP%E6%A1%86%E6%9E%B6Hertz%E5%AE%9E%E7%8E%B0JWT%E8%AE%A4%E8%AF%81/" />
-    <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-redefine.png">
-    <link rel="icon" type="image/png" href="/images/redefine-logo.svg" sizes="192x192">
-    <link rel="apple-touch-icon" sizes="180x180" href="/images/redefine-logo.svg">
-    <link rel="shortcut icon" href="/images/redefine-logo.svg">
-    
-    <title>
-        
-            使用Go HTTP框架Hertz实现JWT认证 |
-        
-        ta0 blog
-    </title>
-    
-<link rel="stylesheet" href="/css/style.css">
+  <meta http-equiv="content-type" content="text/html; charset=utf-8">
+<meta name="x5-fullscreen" content="true">
+<meta name="full-screen" content="yes">
+<meta name="theme-color" content="#317EFB" />
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=0" name="viewport">
+<meta name="description" content="最近在做一个图书管理系统的前端项目，登录后可以进行借书、还书等一系列操作，未登录时进行这些操作会跳转到注册和登录界面，实现这个操作的关键是判断用户是否登录，那么后端应该如何来判断呢？虽然在这个项目中，这并不是我需要考虑的问题，但在我参加的另一个后端项目中，我和另一位学长负责做登录与注册的接口，于是我的疑惑解开了  JWT认证JWT认证简介JSON Web Token（JWT）是一个开放的标准（R">
+<meta property="og:type" content="article">
+<meta property="og:title" content="使用Go HTTP框架Hertz实现JWT认证">
+<meta property="og:url" content="http://example.com/2023/02/03/%E4%BD%BF%E7%94%A8Go-HTTP%E6%A1%86%E6%9E%B6Hertz%E5%AE%9E%E7%8E%B0JWT%E8%AE%A4%E8%AF%81/index.html">
+<meta property="og:site_name" content="Hexo">
+<meta property="og:description" content="最近在做一个图书管理系统的前端项目，登录后可以进行借书、还书等一系列操作，未登录时进行这些操作会跳转到注册和登录界面，实现这个操作的关键是判断用户是否登录，那么后端应该如何来判断呢？虽然在这个项目中，这并不是我需要考虑的问题，但在我参加的另一个后端项目中，我和另一位学长负责做登录与注册的接口，于是我的疑惑解开了  JWT认证JWT认证简介JSON Web Token（JWT）是一个开放的标准（R">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://example.com/img/404.jpg">
+<meta property="article:published_time" content="2023-02-03T11:32:05.000Z">
+<meta property="article:modified_time" content="2023-02-03T11:54:41.715Z">
+<meta property="article:author" content="John Doe">
+<meta property="article:tag" content="中间件">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://example.com/img/404.jpg">
+
+
+<title >使用Go HTTP框架Hertz实现JWT认证</title>
+
+<!-- Favicon -->
+
+    <link href='/img/favicon.svg?v=2.0.3' rel='icon' type='image/png' sizes='16x16' ></link>
+
+
+    <link href='/img/favicon.svg?v=2.0.3' rel='icon' type='image/png' sizes='32x32' ></link>
+
+
+    <link href='/apple-touch-icon.png?v=2.0.3' rel='apple-touch-icon' sizes='180x180' ></link>
+
+
+    <link href='/site.webmanifest' rel='manifest' ></link>
+
+
+<!-- Plugin -->
+
+
+
 
     
-<link rel="stylesheet" href="/css/fonts.css">
+<link rel="stylesheet" href="/css/plugins/bootstrap.row.css">
 
     
-    <link rel="preconnect" href="https://evan.beee.top" crossorigin>
-    <script id="hexo-configurations">
-    let REDEFINE = window.REDEFINE || {};
-    REDEFINE.hexo_config = {"hostname":"example.com","root":"/","language":"zh-CN","path":"search.xml"};
-    REDEFINE.theme_config = {"toc":{"enable":true,"number":false,"expand_all":true,"init_open":true},"style":{"primary_color":"#005080","avatar":"https://ta0.oss-cn-beijing.aliyuncs.com/Cache_-213a3fc2fcb85cc1..jpg","favicon":"/images/redefine-logo.svg","article_img_align":"center","right_side_width":"210px","content_max_width":"1000px","nav_color":{"left":"#f78736","right":"#367df7","transparency":35},"hover":{"shadow":true,"scale":false},"first_screen":{"enable":true,"background_image":{"light":"https://evan.beee.top/img/wallhaven-wqery6-light.webp# background image of the first screen, use relative path or external link (if your website is in subdirectory, use external link)https://evan.beee.top/img/wallhaven-wqery6-light.webp","dark":"https://evan.beee.top/img/wallhaven-wqery6-dark.webp"},"title_color":{"light":"#fff","dark":"#d1d1b6"},"description":null},"scroll":{"progress_bar":{"enable":true},"percent":{"enable":false}}},"local_search":{"enable":true,"preload":true},"code_block":{"copy":true,"style":"mac"},"pjax":{"enable":true},"lazyload":{"enable":true},"version":"1.0.0","friend_links":{"columns":2}};
-    REDEFINE.language_ago = {"second":"%s 秒前","minute":"%s 分钟前","hour":"%s 小时前","day":"%s 天前","week":"%s 周前","month":"%s 个月前","year":"%s 年前"};
-  </script>
-    
-    
-<link rel="stylesheet" href="/css/fontawesome.min.css">
+<link rel="stylesheet" href="https://unpkg.com/locomotive-scroll@4.1.4/dist/locomotive-scroll.min.css">
 
     
-<link rel="stylesheet" href="/css/brands.min.css">
-
-    
-<link rel="stylesheet" href="/css/solid.min.css">
-
-    
-<link rel="stylesheet" href="/css/regular.min.css">
+<link rel="stylesheet" href="https://unpkg.com/@fancyapps/ui@4.0/dist/fancybox.css">
 
     
     
+
+
+
+
+<!-- Icon -->
+
     
+<link rel="stylesheet" href="/css/plugins/font-awesome.min.css">
+
+
+
+
+<!-- Variable -->
+<script>window.ASYNC_CONFIG = {"hostname":"example.com","author":"John Doe","root":"/","typed_text":["欢迎来到我的博客嘿嘿"],"theme_version":"2.0.3","theme":{"switch":true,"default":"style-light"},"favicon":{"logo":null,"icon16":"/img/favicon.svg","icon32":"/img/favicon.svg","appleTouchIcon":"apple-touch-icon.png","webmanifest":"/site.webmanifest","visibilitychange":true,"hidden":"failure.ico","showText":"(/≧▽≦/)咦！又好了！","hideText":"(●—●)喔哟，崩溃啦！"},"i18n":{"placeholder":"Searching...","empty":"We didn't find any results for the search: ${query}.","hits":"${hits} results found","hits_time":"${hits} results found in ${time} ms","author":"Post author: ","copyright_link":"Post link: ","copyright_license_title":"Copyright Notice: ","copyright_license_content":"All articles in this blog are licensed under undefined unless otherwise stated.","copy_success":"Copied","copy_failure":"Copy failed","open_read_mode":"Enter reading mode","exit_read_mode":"Exit reading mode","notice_outdate_message":"It has been undefined days since the last update, the content of the article may be outdated.","just":"Just","min":"minutes ago","hour":"hours ago","day":"days ago","month":"months ago"},"swup":false,"plugin":{"flickr_justified_gallery":"https://unpkg.com/flickr-justified-gallery@latest/dist/fjGallery.min.js"},"icons":{"sun":"far fa-sun","moon":"far fa-moon","play":"fas fa-play","email":"far fa-envelope","next":"fas fa-arrow-right","calendar":"far fa-calendar-alt","clock":"far fa-clock","user":"far fa-user","back_top":"fas fa-arrow-up","close":"fas fa-times","search":"fas fa-search","reward":"fas fa-hand-holding-usd","user_tag":"fas fa-user-alt","toc_tag":"fas fa-th-list","read":"fas fa-book-reader","arrows":"fas fa-arrows-alt-h","double_arrows":"fas fa-angle-double-down","copy":"fas fa-copy"},"icontype":"font","highlight":{"plugin":"highlighjs","theme":true,"copy":true,"lang":true,"title":"mac","height_limit":200}};</script>
+<script id="async-page-config">window.PAGE_CONFIG = {"isPost":true,"isHome":false,"postUpdate":"2023-02-03 19:54:41"};</script>
+
+<!-- Theme mode css -->
+<link data-swup-theme rel="stylesheet" href="/css/index.css?v=2.0.3" id="trm-switch-style">
+<script>
+    let defaultMode = ASYNC_CONFIG.theme.default !=='auto' ?  ASYNC_CONFIG.theme.default : (window.matchMedia("(prefers-color-scheme: light)").matches ? 'style-light' : 'style-dark')
+    let catchMode = localStorage.getItem('theme-mode') || defaultMode;
+    let type = catchMode === 'style-dark' ? 'add' : 'remove';
+    document.documentElement.classList[type]('dark')
+</script>
+
+<!-- CDN -->
+
+
+    
+    
+
+
+
+<!-- Site Analytics -->
+ 
 <meta name="generator" content="Hexo 6.3.0"></head>
 
-
 <body>
-<div class="progress-bar-container">
-    
-        <span class="scroll-progress-bar"></span>
-    
 
-    
-        <span class="pjax-progress-bar"></span>
-        <span class="pjax-progress-icon">
-            <i class="fa-solid fa-circle-notch fa-spin"></i>
-        </span>
-    
-</div>
+  <!-- app wrapper -->
+  <div class="trm-app-frame">
 
-
-<main class="page-container">
-
-    
-
-    <div class="page-main-content">
-
-        <div class="page-main-content-top">
-            <header class="menu-wrapper">
-    
-    <div class="menu-content">
-        <div class="left">
-            
-            <a class="logo-title" href="/">
-                
-                ta0 blog
-                
-            </a>
-        </div>
-
-        <div class="right">
-            <!-- PC -->
-            <div class="pc">
-                <ul class="menu-list">
-                    
-                        
-                            <li class="menu-item">
-                                <!-- Menu -->
-                                <a class="" 
-                                    href="/"  >
-                                    
-                                        
-                                            <i class="fa-regular fa-house"></i>
-                                        
-                                        首页
-                                    
-                                </a>
-                                <!-- Submenu -->
-                                
-                            </li>
-                    
-                        
-                            <li class="menu-item">
-                                <!-- Menu -->
-                                <a class="" 
-                                    href="/archives"  >
-                                    
-                                        
-                                            <i class="fa-regular fa-archive"></i>
-                                        
-                                        归档
-                                    
-                                </a>
-                                <!-- Submenu -->
-                                
-                            </li>
-                    
-                    
-                        <li class="menu-item search search-popup-trigger">
-                            <i class="fa-solid fa-magnifying-glass"></i>
-                        </li>
-                    
-                </ul>
-            </div>
-            <!-- Mobile -->
-            <div class="mobile">
-                
-                    <div class="icon-item search search-popup-trigger"><i class="fa-solid fa-magnifying-glass"></i></div>
-                
-                <div class="icon-item menu-bar">
-                    <div class="menu-bar-middle"></div>
-                </div>
-            </div>
+    <!-- page preloader -->
+    <div class="trm-preloader">
+    <div class="trm-holder">
+        <div class="preloader">
+            <div></div>
+            <div></div>
+            <div></div>
+            <div></div>
+            <div></div>
+            <div></div>
+            <div></div>
+            <div></div>
+            <div></div>
+            <div></div>
         </div>
     </div>
+</div>
+    <!-- page preloader end -->
 
-    <!-- Mobile drawer -->
-    <div class="menu-drawer">
-        <ul class="drawer-menu-list">
-            
-                
-                    <li class="drawer-menu-item flex-center">
-                        <a class="" 
-                        href="/"  >
-                             
-                                
-                                    <i class="fa-regular fa-house"></i>
-                                
-                                首页
-                            
-                        </a>
-                    </li>
-                    <!-- Submenu -->
-                    
-            
-                
-                    <li class="drawer-menu-item flex-center">
-                        <a class="" 
-                        href="/archives"  >
-                             
-                                
-                                    <i class="fa-regular fa-archive"></i>
-                                
-                                归档
-                            
-                        </a>
-                    </li>
-                    <!-- Submenu -->
-                    
-            
+    <!-- change mode preloader -->
+    <div class="trm-mode-swich-animation-frame">
+    <div class="trm-mode-swich-animation">
+        <i class="i-sun"><i class="iconfont far fa-sun"></i></i>
+        <div class="trm-horizon"></div>
+        <i class="i-moon"><i class="iconfont far fa-moon"></i></i>
+    </div>
+</div>
+    <!-- change mode preloader end -->
 
+      <!-- scroll container -->
+      <div id="trm-dynamic-content" class="trm-swup-animation">
+        <div id="trm-scroll-container" class="trm-scroll-container" data-scroll-container style="opacity: 0">
+          <div data-scroll-section id="content" class="trm-scroll-section">
+
+            <div class="locomotive-scroll__sticky-target" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; pointer-events: none;"></div>
+
+            <!-- top bar -->
+            <header class="trm-top-bar" data-scroll data-scroll-sticky data-scroll-target=".locomotive-scroll__sticky-target" data-scroll-offset="-10">
+	<div class="container">
+		<div class="trm-left-side">
+			<!-- logo -->
+<a href="/" class="trm-logo-frame trm-anima-link">
+    
+    
+</a>
+<!-- logo end -->
+		</div>
+		<div class="trm-right-side">
+			<!-- menu -->
+<div class="trm-menu">
+    <nav>
+        <ul>
+            
+            <li class="menu-item-has-children ">
+                <a  href="/" target="">
+                    Home
+                </a>
+                
+            </li>
+            
+            <li class="menu-item-has-children ">
+                <a  href="/archives/" target="">
+                    Archives
+                </a>
+                
+            </li>
+            
         </ul>
-    </div>
-
-    <div class="window-mask"></div>
-
-</header>
-
-
+    </nav>
+</div>
+<!-- menu end -->
+			
+    <!-- mode switcher place -->
+    <div class="trm-mode-switcher-place">
+        <div class="trm-mode-switcher">
+            <i class="iconfont far fa-sun"></i>
+            <input class="tgl tgl-light" id="trm-swich" type="checkbox">
+            <label class="trm-swich" for="trm-swich"></label>
+            <i class="iconfont far fa-moon"></i>
         </div>
+    </div>
+    <!-- mode switcher place end -->
 
-        <div class="page-main-content-middle">
+			
+		</div>
+		<div class="trm-menu-btn">
+			<span></span>
+		</div>
+	</div>
+</header>
+            <!-- top bar end -->
 
-            <div class="main-content">
-
-                
-                    <div class="fade-in-down-animation">
-    <div class="post-page-container">
-        <div class="article-content-container">
-            <div class="article-title">
-                <span class="title-hover-animation"><h1 style="font-size:3rem; font-weight: bold; margin: 10px 0;">使用Go HTTP框架Hertz实现JWT认证</h1></span>
-            </div>
-
+            <!-- body -->
             
-                <div class="article-header">
-                    <div class="avatar">
-                        <img src="https://ta0.oss-cn-beijing.aliyuncs.com/Cache_-213a3fc2fcb85cc1..jpg">
-                    </div>
-                    <div class="info">
-                        <div class="author">
-                            <span class="name">zyta0</span>
-                            
-                        </div>
-                        <div class="meta-info">
-                            <div class="article-meta-info">
-    <span class="article-date article-meta-item">
-        <i class="fa-regular fa-pen-fancy"></i>&nbsp;
-        <span class="pc">2023-02-03 19:32:05</span>
-        <span class="mobile">2023-02-03 19:32</span>
-    </span>
+<div class="trm-content-start">
+    <!-- banner -->
+    <div class="trm-banner" data-scroll data-scroll-direction="vertical">
     
-    
-        <span class="article-tags article-meta-item">
-            <i class="fa-regular fa-tags"></i>&nbsp;
-            <ul>
-                
-                    <li>
-                        <a href="/tags/%E4%B8%AD%E9%97%B4%E4%BB%B6/">中间件</a>&nbsp;
-                    </li>
-                
-            </ul>
-        </span>
+    <!-- banner cover -->
+    <img style="object-position:top;object-fit:cover;" alt="banner" class="trm-banner-cover" data-scroll data-scroll-direction="vertical" data-scroll-speed="-3" src="/img/banner.png">
+    <!-- banner cover end -->
     
 
+    <!-- banner content -->
+    <div class="trm-banner-content trm-overlay">
+        <div class="container" data-scroll data-scroll-direction="vertical" data-scroll-speed="0">
+            <div class="row">
+                
+                <div class="col-lg-4"></div>
+                
+                <div class="col-lg-8">
+
+                    <!-- banner title -->
+                    <div class="trm-banner-text ">
+                        <div class="trm-label trm-mb-20">
+                            NEWS LETTER
+                        </div>
+                        <h1 class="trm-mb-30 trm-hsmb-font">
+                            使用Go HTTP框架Hertz实现JWT认证
+                        </h1>
+
+                        
+                            <ul class="trm-breadcrumbs trm-label">
+                                <li>
+                                    <a href="/" class="trm-anima-link">Home</a>
+                                </li>
+                                <li>
+                                    <span>
+                                        2023
+                                    </span
+                                ></li>
+                            </ul>
+                        
+                    </div>
+                    <!-- banner title end -->
+
+                    <!-- scroll hint -->
+                    <a href="#about-triger" data-scroll-to="#about-triger" data-scroll-offset="-130" class="trm-scroll-hint-frame">
+                        <div class="trm-scroll-hint"></div>
+                        <span class="trm-label">Scroll down</span>
+                    </a>
+                    <!-- scroll hint end -->
+
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- banner content end -->
+</div>
+    <!-- banner end -->
+    <div class="container">
+        <div class="row">
+            
+                <div id="page-sidebar" class="col-lg-4 hidden-sm">
+                    <!-- main card -->
+                    
+
+<div class="trm-main-card-frame trm-sidebar">
+    <div class="trm-main-card" data-scroll data-scroll-repeat data-scroll-sticky data-scroll-target=".locomotive-scroll__sticky-target" data-scroll-offset="60"> 
     
+        <div class="trm-user-tabs" id="sidebar-tabs">
+           <div class="trm-tabs-nav trm-mb-40" id="trm-tabs-nav">
+                <div data-to="tabs-user" class="trm-tabs-nav-item">
+                    <i class="iconfont fas fa-user-alt"></i>
+                </div>
+                <div data-to="tabs-toc" class="trm-tabs-nav-item active">
+                    <i class="iconfont fas fa-th-list"></i>
+                </div>
+           </div>
+            <div name="tabs-user" class="trm-tabs-item">
+                <!-- card header -->
+<div class="trm-mc-header">
+    <div class="trm-avatar-frame trm-mb-20">
+        <img alt="Avatar" class="trm-avatar trm-light-icon" src="https://ta0.oss-cn-beijing.aliyuncs.com/%E5%BE%AE%E4%BF%A1%E5%9B%BE%E7%89%87_20230310221138.jpg"> <img alt="Avatar" class="trm-avatar trm-dark-icon" src="https://ta0.oss-cn-beijing.aliyuncs.com/%E5%BE%AE%E4%BF%A1%E5%9B%BE%E7%89%87_20230310221146.jpg">
+    </div>
+    <h5 class="trm-name trm-mb-15">
+        张.
+    </h5>
     
-        <span class="article-wordcount article-meta-item">
-            <i class="fa-regular fa-file-word"></i>&nbsp;<span>2.7k 字</span>
-        </span>
+        <div class="trm-label">
+            
+            <span class="trm-typed-text">
+                <!-- Words for theme.user.typedText -->
+            </span>
+        </div>
     
+</div>
+<!-- card header end -->
+                <!-- sidebar social -->
+
+<div class="trm-divider trm-mb-40 trm-mt-40"></div>
+<div class="trm-social">
     
-        <span class="article-min2read article-meta-item">
-            <i class="fa-regular fa-clock"></i>&nbsp;<span>11 分钟</span>
-        </span>
-    
-    
-        <span class="article-pv article-meta-item">
-            <i class="fa-regular fa-eye"></i>&nbsp;<span id="busuanzi_value_page_pv"></span>
-        </span>
+        <a href="https://github.com/zyta0?tab=repositories" title="github" rel="nofollow" target="_blank">
+            <i class="iconfont fab fa-github"></i>
+        </a>
     
 </div>
 
-                        </div>
-                    </div>
+<!-- sidebar social end -->
+                <!-- info -->
+<div class="trm-divider trm-mb-40 trm-mt-40"></div>
+<ul class="trm-table trm-mb-20">
+    
+        <li>
+            <div class="trm-label">
+                地址:
+            </div>
+            <div class="trm-label trm-label-light">
+                山西
+            </div>
+        </li>
+    
+        <li>
+            <div class="trm-label">
+                年龄:
+            </div>
+            <div class="trm-label trm-label-light">
+                19
+            </div>
+        </li>
+    
+</ul>
+<!-- info end -->
+
+                
+    <div class="trm-divider trm-mb-40 trm-mt-40"></div>
+    <!-- action button -->
+    <div class="text-center">
+        <a href="mailto:948596698@qq.com" class="trm-btn">
+            Contact Me
+            <i class="iconfont far fa-envelope"></i>
+        </a>
+    </div>
+    <!-- action button end -->
+
+            </div>
+            <div name="tabs-toc" class="trm-tabs-item active">
+                <div class="post-toc">
+    <ol class="toc"><li class="toc-item toc-level-2"><a rel="nofollow" class="toc-link" href="#JWT认证"  data-scroll-to="#JWT认证"><span class="toc-number">1.</span> <span class="toc-text">JWT认证</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a rel="nofollow" class="toc-link" href="#JWT认证简介"  data-scroll-to="#JWT认证简介"><span class="toc-number">1.1.</span> <span class="toc-text">JWT认证简介</span></a></li><li class="toc-item toc-level-3"><a rel="nofollow" class="toc-link" href="#JWT令牌结构"  data-scroll-to="#JWT令牌结构"><span class="toc-number">1.2.</span> <span class="toc-text">JWT令牌结构</span></a></li><li class="toc-item toc-level-3"><a rel="nofollow" class="toc-link" href="#JWT认证流程"  data-scroll-to="#JWT认证流程"><span class="toc-number">1.3.</span> <span class="toc-text">JWT认证流程</span></a></li></ol></li><li class="toc-item toc-level-2"><a rel="nofollow" class="toc-link" href="#Hertz-JWT"  data-scroll-to="#Hertz-JWT"><span class="toc-number">2.</span> <span class="toc-text">Hertz-JWT</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a rel="nofollow" class="toc-link" href="#Demo结构"  data-scroll-to="#Demo结构"><span class="toc-number">2.1.</span> <span class="toc-text">Demo结构</span></a></li><li class="toc-item toc-level-3"><a rel="nofollow" class="toc-link" href="#hertz-jwt-x2F-main-go"  data-scroll-to="#hertz-jwt-x2F-main-go"><span class="toc-number">2.2.</span> <span class="toc-text">hertz_jwt&#x2F;main.go</span></a></li><li class="toc-item toc-level-3"><a rel="nofollow" class="toc-link" href="#hertz-jwt-x2F-router-go"  data-scroll-to="#hertz-jwt-x2F-router-go"><span class="toc-number">2.3.</span> <span class="toc-text">hertz_jwt&#x2F;router.go</span></a></li><li class="toc-item toc-level-3"><a rel="nofollow" class="toc-link" href="#github-com-hertz-contrib-106-119-x74-64-x76-49-x2e-x30-x2e-48-auth-jwt-go"  data-scroll-to="#github-com-hertz-contrib-106-119-x74-64-x76-49-x2e-x30-x2e-48-auth-jwt-go"><span class="toc-number">2.4.</span> <span class="toc-text">github.com\hertz-contrib\jwt@v1.0.0\auth_jwt.go</span></a></li><li class="toc-item toc-level-3"><a rel="nofollow" class="toc-link" href="#hertz-jwt-x2F-mw-x2F-jwt-go"  data-scroll-to="#hertz-jwt-x2F-mw-x2F-jwt-go"><span class="toc-number">2.5.</span> <span class="toc-text">hertz_jwt&#x2F;mw&#x2F;jwt.go</span></a></li><li class="toc-item toc-level-3"><a rel="nofollow" class="toc-link" href="#授权"  data-scroll-to="#授权"><span class="toc-number">2.6.</span> <span class="toc-text">授权</span></a></li></ol></li></ol>
+</div>
+            </div>
+        </div>
+    
+    </div>
+</div>
+                    <!-- main card end -->
                 </div>
             
+            <div id="page-content" class="col-lg-8">
+                <div class="trm-content" id="trm-content">
+                    <div data-scroll data-scroll-repeat data-scroll-offset="500" id="about-triger"></div>
 
-            <div class="article-content markdown-body">
-                <blockquote>
+                    <div id="post-info" class="row hidden-sm">
+    <div class="col-sm-4">
+        <div class="trm-card trm-label trm-label-light text-center">
+            <i class="iconfont far fa-calendar-alt trm-icon"></i><br>
+            02/03
+        </div>
+    </div>
+    <div class="col-sm-4">
+        <div class="trm-card trm-label trm-label-light text-center">
+            <i class="iconfont far fa-clock trm-icon"></i><br>
+            19:32
+        </div>
+    </div>
+    <div class="col-sm-4">
+        <div id="post-author" class="trm-card trm-label trm-label-light text-center">
+            <i class="iconfont far fa-user trm-icon"></i><br>
+            John Doe
+        </div>
+    </div>
+</div>
+<div class="trm-card ">
+    <article id="article-container" class="trm-publication">
+    <blockquote>
 <p>最近在做一个图书管理系统的前端项目，登录后可以进行借书、还书等一系列操作，未登录时进行这些操作会跳转到注册和登录界面，实现这个操作的关键是判断用户是否登录，那么后端应该如何来判断呢？虽然在这个项目中，这并不是我需要考虑的问题，但在我参加的另一个后端项目中，我和另一位学长负责做登录与注册的接口，于是我的疑惑解开了</p>
 </blockquote>
 <h2 id="JWT认证"><a href="#JWT认证" class="headerlink" title="JWT认证"></a>JWT认证</h2><h3 id="JWT认证简介"><a href="#JWT认证简介" class="headerlink" title="JWT认证简介"></a>JWT认证简介</h3><p>JSON Web Token（JWT）是一个开放的标准（RFC 7519），它定义了一个紧凑且自包含的方式，用于在各方之间作为JSON对象安全地传输信息。由于此信息是经过数字签名的，因此可以被验证和信任。</p>
 <h3 id="JWT令牌结构"><a href="#JWT令牌结构" class="headerlink" title="JWT令牌结构"></a>JWT令牌结构</h3><p>令牌结构由三部分组成，Header.Payload.Signature</p>
 <h4 id="标头-Header"><a href="#标头-Header" class="headerlink" title="标头(Header)"></a>标头(Header)</h4><p>通常由两部分组成，令牌的类型（JWT）与所使用的签名算法（例如HMAC SHA256）</p>
-<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">&#123;</span><br><span class="line">	&quot;alg&quot;:&quot;HS256&quot;,</span><br><span class="line">	&quot;typ&quot;:&quot;JWT&quot;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">&#123;</span><br><span class="line">	&quot;alg&quot;:&quot;HS256&quot;,</span><br><span class="line">	&quot;typ&quot;:&quot;JWT&quot;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 
-<p>这一部分会被Base64Url编码为JWT的第一部分，可以通过<a class="link"   target="_blank" rel="noopener" href="https://jwt.io/" >JWT官网 <i class="fa-regular fa-arrow-up-right-from-square fa-sm"></i></a>来查看这一部分被编码后的效果:</p>
+<p>这一部分会被Base64Url编码为JWT的第一部分，可以通过<a target="_blank" rel="noopener" href="https://jwt.io/">JWT官网</a>来查看这一部分被编码后的效果:</p>
 <p><code>eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9</code></p>
 <h4 id="载荷-Payload"><a href="#载荷-Payload" class="headerlink" title="载荷(Payload)"></a>载荷(Payload)</h4><p>载荷部分一般会存放一些有效信息，比如用户的信息等，但不能存放敏感信息，比如用户密码等，因为Base64是对称解密的，在客户端就可以拿到该部分内容</p>
-<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">&#123;</span><br><span class="line">	&quot;iss&quot;:&quot;zyta0&quot;,</span><br><span class="line">	&quot;name&quot;:&quot;zyta0&quot;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">&#123;</span><br><span class="line">	&quot;iss&quot;:&quot;zyta0&quot;,</span><br><span class="line">	&quot;name&quot;:&quot;zyta0&quot;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 
-<p>同样，这一部分也会被Base64Url编码，成为JWT的第二部分，通过<a class="link"   target="_blank" rel="noopener" href="https://jwt.io/" >JWT官网 <i class="fa-regular fa-arrow-up-right-from-square fa-sm"></i></a>来查看这部分被编码后的效果:</p>
+<p>同样，这一部分也会被Base64Url编码，成为JWT的第二部分，通过<a target="_blank" rel="noopener" href="https://jwt.io/">JWT官网</a>来查看这部分被编码后的效果:</p>
 <p><code>eyJpc3MiOiJ6eXRhMCIsIm5hbWUiOiJ6eXRhMCJ9</code></p>
 <h4 id="签名-Signature"><a href="#签名-Signature" class="headerlink" title="签名(Signature)"></a>签名(Signature)</h4><p>签名部分需要经过Base64Url编码的Header和Payload部分，秘钥，签名算法来完成签名。下面便是以key为秘钥，HS256为签名算法的例子:</p>
-<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">HMACSHA256(</span><br><span class="line">  base64UrlEncode(header) + &quot;.&quot; +</span><br><span class="line">  base64UrlEncode(payload), </span><br><span class="line">  key</span><br><span class="line">)</span><br></pre></td></tr></table></figure></div>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">HMACSHA256(</span><br><span class="line">  base64UrlEncode(header) + &quot;.&quot; +</span><br><span class="line">  base64UrlEncode(payload), </span><br><span class="line">  key</span><br><span class="line">)</span><br></pre></td></tr></table></figure>
 
 <p>签名后的效果：</p>
 <p><code>eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJ6eXRhMCIsIm5hbWUiOiJ6eXRhMCJ9.jgDhUTbmOHwpnnr_J9kEzVUzSsSAp7_rLR-koJqoW6U</code></p>
 <h5 id="签名的目的"><a href="#签名的目的" class="headerlink" title="签名的目的"></a>签名的目的</h5><p>防止Header和Payload部分的信息被篡改。通过对Header和Payload解码后篡改数据，然后进行编码，这时可以使用原来的签名，也可以生成新的签名，这两种做法都是行不通的。使用原来的签名，则在服务端验证时，发现该签名与Header和Payload不匹配，无法通过验证；通过生成新的签名更是不可能，除非拿到服务端的秘钥，否则得出来的签名无法通过验证</p>
-<h3 id="JWT认证流程"><a href="#JWT认证流程" class="headerlink" title="JWT认证流程"></a>JWT认证流程</h3><p><img  
-                     lazyload
-                     src="/images/loading.svg"
-                     data-src="https://ta0.oss-cn-beijing.aliyuncs.com/%E6%9C%AA%E5%91%BD%E5%90%8D%E6%96%87%E4%BB%B6.png"
-                      alt="未命名文件"
-                ></p>
+<h3 id="JWT认证流程"><a href="#JWT认证流程" class="headerlink" title="JWT认证流程"></a>JWT认证流程</h3><p><img src="https://ta0.oss-cn-beijing.aliyuncs.com/%E6%9C%AA%E5%91%BD%E5%90%8D%E6%96%87%E4%BB%B6.png" alt="未命名文件" loading="lazy" onerror='this.onerror=null;this.src="/img/404.jpg"'></p>
 <ul>
 <li>客户端发送登录请求后，服务端拿到登录的账号密码去数据库中校验账号密码正确性，正确则生成token并返回，否则登录失败</li>
 <li>再次请求时携带token，服务端拿到token后校验token是否被篡改，校验token是否过期，token过期则返回token过期提示</li>
@@ -287,30 +401,30 @@
 <li>token校验无误则返回请求资源</li>
 </ul>
 <p><strong>有了JWT认证，我们引言部分的难题便解开了，后端可以通过前端请求是否携带token来判断用户是否登录，从而给予其访问其他功能的权限</strong></p>
-<h2 id="Hertz-JWT"><a href="#Hertz-JWT" class="headerlink" title="Hertz-JWT"></a>Hertz-JWT</h2><p>基本的配置可以参考<a class="link"   target="_blank" rel="noopener" href="https://www.cloudwego.io/zh/docs/hertz/tutorials/basic-feature/middleware/jwt/" >官方文档 <i class="fa-regular fa-arrow-up-right-from-square fa-sm"></i></a></p>
-<p>由于首次接触JWT认证，官方文档给出的内容阅读起来有点困难，况且我不懂它是怎么实现的，带着疑惑我去读了例子的源码和库中的部分代码，这里通过分析<a class="link"   target="_blank" rel="noopener" href="https://github.com/cloudwego/hertz-examples/tree/main/bizdemo/hertz_jwt" >官方给出例子的源码 <i class="fa-regular fa-arrow-up-right-from-square fa-sm"></i></a>来介绍Hertz中JWT的使用</p>
-<h3 id="Demo结构"><a href="#Demo结构" class="headerlink" title="Demo结构"></a>Demo结构</h3><div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line">hertz_jwt</span><br><span class="line">├── biz</span><br><span class="line">│   ├── dal</span><br><span class="line">│   │   ├── init.go </span><br><span class="line">│   │   └── mysql</span><br><span class="line">│   │       ├── init.go         // 连接数据库</span><br><span class="line">│   │       └── user.go         // 注册用户、校验用户、查询用户</span><br><span class="line">│   ├── handler                 //处理路由请求</span><br><span class="line">│   │   ├── ping.go</span><br><span class="line">│   │   └── register.go         </span><br><span class="line">│   ├── model</span><br><span class="line">│   │   ├── sql                 //用于初始化表</span><br><span class="line">│   │   │   └── user.sql</span><br><span class="line">│   │   └── user.go             //定义结构体与数据库中的表对应</span><br><span class="line">│   ├── mw</span><br><span class="line">│   │   └── jwt.go              //配置hertz-jwt中间件</span><br><span class="line">│   ├── router</span><br><span class="line">│   │   └── register.go</span><br><span class="line">│   └── utils</span><br><span class="line">│       └── md5.go              // 对密码进行md5加密</span><br><span class="line">├── docker-compose.yml </span><br><span class="line">├── go.mod</span><br><span class="line">├── go.sum</span><br><span class="line">├── main.go # hertz 服务入口</span><br><span class="line">├── readme.md</span><br><span class="line">├── router.go # 路由注册</span><br><span class="line">└── router_gen.go</span><br></pre></td></tr></table></figure></div>
+<h2 id="Hertz-JWT"><a href="#Hertz-JWT" class="headerlink" title="Hertz-JWT"></a>Hertz-JWT</h2><p>基本的配置可以参考<a target="_blank" rel="noopener" href="https://www.cloudwego.io/zh/docs/hertz/tutorials/basic-feature/middleware/jwt/">官方文档</a></p>
+<p>由于首次接触JWT认证，官方文档给出的内容阅读起来有点困难，况且我不懂它是怎么实现的，带着疑惑我去读了例子的源码和库中的部分代码，这里通过分析<a target="_blank" rel="noopener" href="https://github.com/cloudwego/hertz-examples/tree/main/bizdemo/hertz_jwt">官方给出例子的源码</a>来介绍Hertz中JWT的使用</p>
+<h3 id="Demo结构"><a href="#Demo结构" class="headerlink" title="Demo结构"></a>Demo结构</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line">hertz_jwt</span><br><span class="line">├── biz</span><br><span class="line">│   ├── dal</span><br><span class="line">│   │   ├── init.go </span><br><span class="line">│   │   └── mysql</span><br><span class="line">│   │       ├── init.go         // 连接数据库</span><br><span class="line">│   │       └── user.go         // 注册用户、校验用户、查询用户</span><br><span class="line">│   ├── handler                 //处理路由请求</span><br><span class="line">│   │   ├── ping.go</span><br><span class="line">│   │   └── register.go         </span><br><span class="line">│   ├── model</span><br><span class="line">│   │   ├── sql                 //用于初始化表</span><br><span class="line">│   │   │   └── user.sql</span><br><span class="line">│   │   └── user.go             //定义结构体与数据库中的表对应</span><br><span class="line">│   ├── mw</span><br><span class="line">│   │   └── jwt.go              //配置hertz-jwt中间件</span><br><span class="line">│   ├── router</span><br><span class="line">│   │   └── register.go</span><br><span class="line">│   └── utils</span><br><span class="line">│       └── md5.go              // 对密码进行md5加密</span><br><span class="line">├── docker-compose.yml </span><br><span class="line">├── go.mod</span><br><span class="line">├── go.sum</span><br><span class="line">├── main.go # hertz 服务入口</span><br><span class="line">├── readme.md</span><br><span class="line">├── router.go # 路由注册</span><br><span class="line">└── router_gen.go</span><br></pre></td></tr></table></figure>
 
 <h3 id="hertz-jwt-x2F-main-go"><a href="#hertz-jwt-x2F-main-go" class="headerlink" title="hertz_jwt&#x2F;main.go"></a>hertz_jwt&#x2F;main.go</h3><p>程序的入口文件，进行了 数据库连接 &#x3D;&gt; JWT中间件初始化 &#x3D;&gt; 注册路由，启动服务</p>
-<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">func main() &#123;</span><br><span class="line">	//dal.Init()函数来自于文件dal/init.go，查看该文件，发现是对mysql.Init()的调用，该函数执行的是数据库的连接操作</span><br><span class="line">	dal.Init()                   </span><br><span class="line">    //jwt中间件的初始化</span><br><span class="line">    mw.InitJwt()</span><br><span class="line">	h := server.Default()</span><br><span class="line">	register(h)</span><br><span class="line">	h.Spin()</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">func main() &#123;</span><br><span class="line">	//dal.Init()函数来自于文件dal/init.go，查看该文件，发现是对mysql.Init()的调用，该函数执行的是数据库的连接操作</span><br><span class="line">	dal.Init()                   </span><br><span class="line">    //jwt中间件的初始化</span><br><span class="line">    mw.InitJwt()</span><br><span class="line">	h := server.Default()</span><br><span class="line">	register(h)</span><br><span class="line">	h.Spin()</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 
 <h3 id="hertz-jwt-x2F-router-go"><a href="#hertz-jwt-x2F-router-go" class="headerlink" title="hertz_jwt&#x2F;router.go"></a>hertz_jwt&#x2F;router.go</h3><p>在这个文件中可以看到所有注册的路由，以此为线索，我们去分别查看不同路由对应的处理逻辑</p>
-<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">func customizedRegister(r *server.Hertz) &#123;</span><br><span class="line">	r.POST(&quot;/register&quot;, handler.Register)</span><br><span class="line">	r.POST(&quot;/login&quot;, mw.JwtMiddleware.LoginHandler)</span><br><span class="line">	auth := r.Group(&quot;/auth&quot;, mw.JwtMiddleware.MiddlewareFunc())</span><br><span class="line">	auth.GET(&quot;/ping&quot;, handler.Ping)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">func customizedRegister(r *server.Hertz) &#123;</span><br><span class="line">	r.POST(&quot;/register&quot;, handler.Register)</span><br><span class="line">	r.POST(&quot;/login&quot;, mw.JwtMiddleware.LoginHandler)</span><br><span class="line">	auth := r.Group(&quot;/auth&quot;, mw.JwtMiddleware.MiddlewareFunc())</span><br><span class="line">	auth.GET(&quot;/ping&quot;, handler.Ping)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 
 <p>可以看到一共注册了三个路由，一个路由组auth，括号中是路由对应的处理函数。</p>
 <p>第一个路由是注册路由，与我们今天的主题无关；</p>
 <p>第二个路由是登录路由，登陆成功后会返回token；</p>
 <p>第三个路由是ping请求，但其所在的路由组auth被注入了JWT中间件授权逻辑，意味着只有完成JWT的认证才授权访问该路由</p>
-<h3 id="github-com-hertz-contrib-106-119-116-x40-x76-49-46-x30-46-48-auth-jwt-go"><a href="#github-com-hertz-contrib-106-119-116-x40-x76-49-46-x30-46-48-auth-jwt-go" class="headerlink" title="github.com\hertz-contrib\&#106;&#119;&#116;&#x40;&#x76;&#49;&#46;&#x30;&#46;&#48;\auth_jwt.go"></a>github.com\hertz-contrib\<a class="link"   href="mailto:&#106;&#119;&#116;&#x40;&#x76;&#49;&#46;&#x30;&#46;&#48;" >&#106;&#119;&#116;&#x40;&#x76;&#49;&#46;&#x30;&#46;&#48; <i class="fa-regular fa-arrow-up-right-from-square fa-sm"></i></a>\auth_jwt.go</h3><p>该文件是Hertz-JWT库中的文件，里边实现了 <code>HertzJWTMiddleware </code>类型的方法<code>LoginHandler</code></p>
+<h3 id="github-com-hertz-contrib-106-119-x74-64-x76-49-x2e-x30-x2e-48-auth-jwt-go"><a href="#github-com-hertz-contrib-106-119-x74-64-x76-49-x2e-x30-x2e-48-auth-jwt-go" class="headerlink" title="github.com\hertz-contrib\&#106;&#119;&#x74;&#64;&#x76;&#49;&#x2e;&#x30;&#x2e;&#48;\auth_jwt.go"></a>github.com\hertz-contrib\<a href="mailto:&#106;&#119;&#x74;&#64;&#x76;&#49;&#x2e;&#x30;&#x2e;&#48;">&#106;&#119;&#x74;&#64;&#x76;&#49;&#x2e;&#x30;&#x2e;&#48;</a>\auth_jwt.go</h3><p>该文件是Hertz-JWT库中的文件，里边实现了 <code>HertzJWTMiddleware </code>类型的方法<code>LoginHandler</code></p>
 <p>从router&#x2F;go文件中可以看出，登录路由正是调用了该方法来处理登录请求的，那么有人会问，既然这是库中就已经定义好的，那我们直接调用就好了，然而，现在并不能调用该方法，因为该方法是<code>HertzJWTMiddleware</code>类型的方法，在我们的文件中要先初始化一个该类型的变量，才能调用该方法。接下来我们来看如何初始化该类型</p>
 <h3 id="hertz-jwt-x2F-mw-x2F-jwt-go"><a href="#hertz-jwt-x2F-mw-x2F-jwt-go" class="headerlink" title="hertz_jwt&#x2F;mw&#x2F;jwt.go"></a>hertz_jwt&#x2F;mw&#x2F;jwt.go</h3><p>该文件中初始化了一个<code>HertzJWTMiddleware</code>类型，我在该代码中做了相应的注释</p>
-<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br></pre></td><td class="code"><pre><span class="line">func InitJwt() &#123;</span><br><span class="line">	var err error</span><br><span class="line">	JwtMiddleware, err = jwt.New(&amp;jwt.HertzJWTMiddleware&#123;</span><br><span class="line">		Realm:       &quot;test zone&quot;,</span><br><span class="line">		Key:         []byte(&quot;secret key&quot;),</span><br><span class="line">		Timeout:     time.Hour,</span><br><span class="line">		MaxRefresh:  time.Hour,</span><br><span class="line">		TokenLookup: &quot;header: Authorization, query: token, cookie: jwt&quot;,</span><br><span class="line">		//设置从header中获取token的前缀</span><br><span class="line">		TokenHeadName: &quot;Bearer&quot;,</span><br><span class="line">		//设置登录成功的响应函数</span><br><span class="line">		LoginResponse: func(ctx context.Context, c *app.RequestContext, code int, token string, expire time.Time) &#123;</span><br><span class="line">			c.JSON(http.StatusOK, utils.H&#123;</span><br><span class="line">				&quot;code&quot;:    code,</span><br><span class="line">				&quot;token&quot;:   token,</span><br><span class="line">				&quot;expire&quot;:  expire.Format(time.RFC3339),</span><br><span class="line">				&quot;message&quot;: &quot;success&quot;,</span><br><span class="line">			&#125;)</span><br><span class="line">		&#125;,</span><br><span class="line">		//用户的认证函数   参数绑定 =&gt; 去数据库中对比用户的账号密码</span><br><span class="line">		Authenticator: func(ctx context.Context, c *app.RequestContext) (interface&#123;&#125;, error) &#123;</span><br><span class="line">			var loginStruct struct &#123;</span><br><span class="line">				Account  string `form:&quot;account&quot; json:&quot;account&quot; query:&quot;account&quot; vd:&quot;(len($) &gt; 0 &amp;&amp; len($) &lt; 30); msg:&#x27;Illegal format&#x27;&quot;`</span><br><span class="line">				Password string `form:&quot;password&quot; json:&quot;password&quot; query:&quot;password&quot; vd:&quot;(len($) &gt; 0 &amp;&amp; len($) &lt; 30); msg:&#x27;Illegal format&#x27;&quot;`</span><br><span class="line">			&#125;</span><br><span class="line">			if err := c.BindAndValidate(&amp;loginStruct); err != nil &#123;</span><br><span class="line">				return nil, err</span><br><span class="line">			&#125;</span><br><span class="line">			users, err := mysql.CheckUser(loginStruct.Account, utils2.MD5(loginStruct.Password))</span><br><span class="line">			if err != nil &#123;</span><br><span class="line">				return nil, err</span><br><span class="line">			&#125;</span><br><span class="line">			if len(users) == 0 &#123;</span><br><span class="line">				return nil, errors.New(&quot;user already exists or wrong password&quot;)</span><br><span class="line">			&#125;</span><br><span class="line"></span><br><span class="line">			return users[0], nil</span><br><span class="line">		&#125;,</span><br><span class="line">		IdentityKey: IdentityKey,</span><br><span class="line">		IdentityHandler: func(ctx context.Context, c *app.RequestContext) interface&#123;&#125; &#123;</span><br><span class="line">			claims := jwt.ExtractClaims(ctx, c)</span><br><span class="line">			return &amp;model.User&#123;</span><br><span class="line">				UserName: claims[IdentityKey].(string),</span><br><span class="line">			&#125;</span><br><span class="line">		&#125;,</span><br><span class="line">		//用于为生成token提供负载</span><br><span class="line">		PayloadFunc: func(data interface&#123;&#125;) jwt.MapClaims &#123;</span><br><span class="line">			if v, ok := data.(*model.User); ok &#123;</span><br><span class="line">				return jwt.MapClaims&#123;</span><br><span class="line">					IdentityKey: v.UserName,</span><br><span class="line">				&#125;</span><br><span class="line">			&#125;</span><br><span class="line">			return jwt.MapClaims&#123;&#125;</span><br><span class="line">		&#125;,</span><br><span class="line">		//返回服务端信息</span><br><span class="line">		HTTPStatusMessageFunc: func(e error, ctx context.Context, c *app.RequestContext) string &#123;</span><br><span class="line">			hlog.CtxErrorf(ctx, &quot;jwt biz err = %+v&quot;, e.Error())</span><br><span class="line">			return e.Error()</span><br><span class="line">		&#125;,</span><br><span class="line">		//认证未通过的处理函数</span><br><span class="line">		Unauthorized: func(ctx context.Context, c *app.RequestContext, code int, message string) &#123;</span><br><span class="line">			c.JSON(http.StatusOK, utils.H&#123;</span><br><span class="line">				&quot;code&quot;:    code,</span><br><span class="line">				&quot;message&quot;: message,</span><br><span class="line">			&#125;)</span><br><span class="line">		&#125;,</span><br><span class="line">	&#125;)</span><br><span class="line">	if err != nil &#123;</span><br><span class="line">		panic(err)</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br></pre></td><td class="code"><pre><span class="line">func InitJwt() &#123;</span><br><span class="line">	var err error</span><br><span class="line">	JwtMiddleware, err = jwt.New(&amp;jwt.HertzJWTMiddleware&#123;</span><br><span class="line">		Realm:       &quot;test zone&quot;,</span><br><span class="line">		Key:         []byte(&quot;secret key&quot;),</span><br><span class="line">		Timeout:     time.Hour,</span><br><span class="line">		MaxRefresh:  time.Hour,</span><br><span class="line">		TokenLookup: &quot;header: Authorization, query: token, cookie: jwt&quot;,</span><br><span class="line">		//设置从header中获取token的前缀</span><br><span class="line">		TokenHeadName: &quot;Bearer&quot;,</span><br><span class="line">		//设置登录成功的响应函数</span><br><span class="line">		LoginResponse: func(ctx context.Context, c *app.RequestContext, code int, token string, expire time.Time) &#123;</span><br><span class="line">			c.JSON(http.StatusOK, utils.H&#123;</span><br><span class="line">				&quot;code&quot;:    code,</span><br><span class="line">				&quot;token&quot;:   token,</span><br><span class="line">				&quot;expire&quot;:  expire.Format(time.RFC3339),</span><br><span class="line">				&quot;message&quot;: &quot;success&quot;,</span><br><span class="line">			&#125;)</span><br><span class="line">		&#125;,</span><br><span class="line">		//用户的认证函数   参数绑定 =&gt; 去数据库中对比用户的账号密码</span><br><span class="line">		Authenticator: func(ctx context.Context, c *app.RequestContext) (interface&#123;&#125;, error) &#123;</span><br><span class="line">			var loginStruct struct &#123;</span><br><span class="line">				Account  string `form:&quot;account&quot; json:&quot;account&quot; query:&quot;account&quot; vd:&quot;(len($) &gt; 0 &amp;&amp; len($) &lt; 30); msg:&#x27;Illegal format&#x27;&quot;`</span><br><span class="line">				Password string `form:&quot;password&quot; json:&quot;password&quot; query:&quot;password&quot; vd:&quot;(len($) &gt; 0 &amp;&amp; len($) &lt; 30); msg:&#x27;Illegal format&#x27;&quot;`</span><br><span class="line">			&#125;</span><br><span class="line">			if err := c.BindAndValidate(&amp;loginStruct); err != nil &#123;</span><br><span class="line">				return nil, err</span><br><span class="line">			&#125;</span><br><span class="line">			users, err := mysql.CheckUser(loginStruct.Account, utils2.MD5(loginStruct.Password))</span><br><span class="line">			if err != nil &#123;</span><br><span class="line">				return nil, err</span><br><span class="line">			&#125;</span><br><span class="line">			if len(users) == 0 &#123;</span><br><span class="line">				return nil, errors.New(&quot;user already exists or wrong password&quot;)</span><br><span class="line">			&#125;</span><br><span class="line"></span><br><span class="line">			return users[0], nil</span><br><span class="line">		&#125;,</span><br><span class="line">		IdentityKey: IdentityKey,</span><br><span class="line">		IdentityHandler: func(ctx context.Context, c *app.RequestContext) interface&#123;&#125; &#123;</span><br><span class="line">			claims := jwt.ExtractClaims(ctx, c)</span><br><span class="line">			return &amp;model.User&#123;</span><br><span class="line">				UserName: claims[IdentityKey].(string),</span><br><span class="line">			&#125;</span><br><span class="line">		&#125;,</span><br><span class="line">		//用于为生成token提供负载</span><br><span class="line">		PayloadFunc: func(data interface&#123;&#125;) jwt.MapClaims &#123;</span><br><span class="line">			if v, ok := data.(*model.User); ok &#123;</span><br><span class="line">				return jwt.MapClaims&#123;</span><br><span class="line">					IdentityKey: v.UserName,</span><br><span class="line">				&#125;</span><br><span class="line">			&#125;</span><br><span class="line">			return jwt.MapClaims&#123;&#125;</span><br><span class="line">		&#125;,</span><br><span class="line">		//返回服务端信息</span><br><span class="line">		HTTPStatusMessageFunc: func(e error, ctx context.Context, c *app.RequestContext) string &#123;</span><br><span class="line">			hlog.CtxErrorf(ctx, &quot;jwt biz err = %+v&quot;, e.Error())</span><br><span class="line">			return e.Error()</span><br><span class="line">		&#125;,</span><br><span class="line">		//认证未通过的处理函数</span><br><span class="line">		Unauthorized: func(ctx context.Context, c *app.RequestContext, code int, message string) &#123;</span><br><span class="line">			c.JSON(http.StatusOK, utils.H&#123;</span><br><span class="line">				&quot;code&quot;:    code,</span><br><span class="line">				&quot;message&quot;: message,</span><br><span class="line">			&#125;)</span><br><span class="line">		&#125;,</span><br><span class="line">	&#125;)</span><br><span class="line">	if err != nil &#123;</span><br><span class="line">		panic(err)</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 
 <p>该部分首先初始化了一个<code>HertzJWTMiddleware</code>类型的变量：<code>JwtMiddleware</code></p>
 <p>在初始化该变量时可以看到有很多字段，在官方文档中可以查看该字段代表什么，这里不做赘述。</p>
 <p>在上面初始化变量时可以看到很多字段都有相对应的函数，那么大家有没有疑惑：这些函数在什么时候 哪个地方执行呢？</p>
-<p>这时候又要回到github.com\hertz-contrib\<a class="link"   href="mailto:&#106;&#x77;&#x74;&#x40;&#118;&#49;&#46;&#48;&#46;&#48;" >&#106;&#x77;&#x74;&#x40;&#118;&#49;&#46;&#48;&#46;&#48; <i class="fa-regular fa-arrow-up-right-from-square fa-sm"></i></a>\auth_jwt.go文件中<code>LoginHandler</code>方法了</p>
-<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br></pre></td><td class="code"><pre><span class="line">func (mw *HertzJWTMiddleware) LoginHandler(ctx context.Context, c *app.RequestContext) &#123;</span><br><span class="line">	//查看是否定义了该函数，若没定义，调用认证未通过的函数，给客户端返回信息，表明服务端错误</span><br><span class="line">	if mw.Authenticator == nil &#123;</span><br><span class="line">		mw.unauthorized(ctx, c, http.StatusInternalServerError,</span><br><span class="line">		mw.HTTPStatusMessageFunc(ErrMissingAuthenticatorFunc, ctx, c))</span><br><span class="line">		return</span><br><span class="line">	&#125;</span><br><span class="line">	//认证通过后，拿到用户的信息，作为token的payload部分</span><br><span class="line">	data, err := mw.Authenticator(ctx, c)</span><br><span class="line">	if err != nil &#123;</span><br><span class="line">		mw.unauthorized(ctx, c, http.StatusUnauthorized, mw.HTTPStatusMessageFunc(err, ctx, c))</span><br><span class="line">		return</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	// Create the token</span><br><span class="line">	token := jwt.New(jwt.GetSigningMethod(mw.SigningAlgorithm))</span><br><span class="line">	claims := token.Claims.(jwt.MapClaims)</span><br><span class="line">	//将认证通过时返回的用户数据作为token的负载</span><br><span class="line">	if mw.PayloadFunc != nil &#123;</span><br><span class="line">		for key, value := range mw.PayloadFunc(data) &#123;</span><br><span class="line">			claims[key] = value</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	expire := mw.TimeFunc().Add(mw.Timeout)</span><br><span class="line">	claims[&quot;exp&quot;] = expire.Unix()</span><br><span class="line">	claims[&quot;orig_iat&quot;] = mw.TimeFunc().Unix()</span><br><span class="line">	//完成签名</span><br><span class="line">	tokenString, err := mw.signedString(token)</span><br><span class="line">	if err != nil &#123;</span><br><span class="line">		mw.unauthorized(ctx, c, http.StatusUnauthorized, mw.HTTPStatusMessageFunc(ErrFailedTokenCreation, ctx, c))</span><br><span class="line">		return</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	mw.LoginResponse(ctx, c, http.StatusOK, tokenString, expire)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></div>
+<p>这时候又要回到github.com\hertz-contrib\<a href="mailto:&#x6a;&#x77;&#116;&#64;&#118;&#49;&#x2e;&#x30;&#46;&#x30;">&#x6a;&#x77;&#116;&#64;&#118;&#49;&#x2e;&#x30;&#46;&#x30;</a>\auth_jwt.go文件中<code>LoginHandler</code>方法了</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br></pre></td><td class="code"><pre><span class="line">func (mw *HertzJWTMiddleware) LoginHandler(ctx context.Context, c *app.RequestContext) &#123;</span><br><span class="line">	//查看是否定义了该函数，若没定义，调用认证未通过的函数，给客户端返回信息，表明服务端错误</span><br><span class="line">	if mw.Authenticator == nil &#123;</span><br><span class="line">		mw.unauthorized(ctx, c, http.StatusInternalServerError,</span><br><span class="line">		mw.HTTPStatusMessageFunc(ErrMissingAuthenticatorFunc, ctx, c))</span><br><span class="line">		return</span><br><span class="line">	&#125;</span><br><span class="line">	//认证通过后，拿到用户的信息，作为token的payload部分</span><br><span class="line">	data, err := mw.Authenticator(ctx, c)</span><br><span class="line">	if err != nil &#123;</span><br><span class="line">		mw.unauthorized(ctx, c, http.StatusUnauthorized, mw.HTTPStatusMessageFunc(err, ctx, c))</span><br><span class="line">		return</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	// Create the token</span><br><span class="line">	token := jwt.New(jwt.GetSigningMethod(mw.SigningAlgorithm))</span><br><span class="line">	claims := token.Claims.(jwt.MapClaims)</span><br><span class="line">	//将认证通过时返回的用户数据作为token的负载</span><br><span class="line">	if mw.PayloadFunc != nil &#123;</span><br><span class="line">		for key, value := range mw.PayloadFunc(data) &#123;</span><br><span class="line">			claims[key] = value</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	expire := mw.TimeFunc().Add(mw.Timeout)</span><br><span class="line">	claims[&quot;exp&quot;] = expire.Unix()</span><br><span class="line">	claims[&quot;orig_iat&quot;] = mw.TimeFunc().Unix()</span><br><span class="line">	//完成签名</span><br><span class="line">	tokenString, err := mw.signedString(token)</span><br><span class="line">	if err != nil &#123;</span><br><span class="line">		mw.unauthorized(ctx, c, http.StatusUnauthorized, mw.HTTPStatusMessageFunc(ErrFailedTokenCreation, ctx, c))</span><br><span class="line">		return</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	mw.LoginResponse(ctx, c, http.StatusOK, tokenString, expire)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 
 <p>从该方法中可以看到，我们在初始化变量<code>JwtMiddleware</code>时定义的方法，都被调用在该方法中了</p>
 <p>该方法的大致逻辑是：</p>
@@ -327,7 +441,7 @@
 <hr>
 <p>至此，JWT的认证部分我们就讲完了，但是JWT的核心为<strong>认证</strong>和<strong>授权</strong>，我们接下来来看看，如何为带有token的请求开放访问权限</p>
 <h3 id="授权"><a href="#授权" class="headerlink" title="授权"></a>授权</h3><p>可以看到在hertz_jwt&#x2F;router.go文件中，有这样两行代码：</p>
-<div class="highlight-container" data-rel="Plaintext"><figure class="iseeu highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">auth := r.Group(&quot;/auth&quot;, mw.JwtMiddleware.MiddlewareFunc())</span><br><span class="line">auth.GET(&quot;/ping&quot;, handler.Ping)</span><br></pre></td></tr></table></figure></div>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">auth := r.Group(&quot;/auth&quot;, mw.JwtMiddleware.MiddlewareFunc())</span><br><span class="line">auth.GET(&quot;/ping&quot;, handler.Ping)</span><br></pre></td></tr></table></figure>
 
 <p>auth被注册为一个路由组，该路由组有一个GET类型的路由<code>ping</code>，我们可以看到路由组被绑定了一个方法，该方法已经由库里边的代码实现，直接添加即可。</p>
 <p>该方法用于校验token</p>
@@ -335,320 +449,153 @@
 <hr>
 <p>该demo中有关JWT的部分基本为以上的内容，其中还有涉及到<code>Gorm</code>的操作，并不是本文主题，不再赘述</p>
 
-            </div>
-
-            
-                <div class="post-copyright-info">
-                    <div class="article-copyright-info-container">
-    <ul>
-        <li>本文标题：使用Go HTTP框架Hertz实现JWT认证</li>
-        <li>本文作者：zyta0</li>
-        <li>创建时间：2023-02-03 19:32:05</li>
-        <li>
-            本文链接：http://zyta0.cn/2023/02/03/使用Go-HTTP框架Hertz实现JWT认证/
-        </li>
-        <li>
-            版权声明：本博客所有文章除特别声明外，均采用 <a class="license" target="_blank" rel="noopener" href="https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh">BY-NC-SA</a> 许可协议。转载请注明出处！
-        </li>
-    </ul>
+</article>
+    
+    
 </div>
-
-                </div>
-            
-
-            
-                <ul class="post-tags-box">
-                    
-                        <li class="tag-item">
-                            <a href="/tags/%E4%B8%AD%E9%97%B4%E4%BB%B6/">#中间件</a>&nbsp;
-                        </li>
-                    
-                </ul>
-            
-
-            
-
-            
-        </div>
-
-        
-            <div class="toc-content-container">
-                <div class="post-toc-wrap">
-    <div class="post-toc">
-        <div class="toc-title">此页目录</div>
-        <div class="page-title">使用Go HTTP框架Hertz实现JWT认证</div>
-        <ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#JWT%E8%AE%A4%E8%AF%81"><span class="nav-text">JWT认证</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#JWT%E8%AE%A4%E8%AF%81%E7%AE%80%E4%BB%8B"><span class="nav-text">JWT认证简介</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#JWT%E4%BB%A4%E7%89%8C%E7%BB%93%E6%9E%84"><span class="nav-text">JWT令牌结构</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E6%A0%87%E5%A4%B4-Header"><span class="nav-text">标头(Header)</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E8%BD%BD%E8%8D%B7-Payload"><span class="nav-text">载荷(Payload)</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E7%AD%BE%E5%90%8D-Signature"><span class="nav-text">签名(Signature)</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#%E7%AD%BE%E5%90%8D%E7%9A%84%E7%9B%AE%E7%9A%84"><span class="nav-text">签名的目的</span></a></li></ol></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#JWT%E8%AE%A4%E8%AF%81%E6%B5%81%E7%A8%8B"><span class="nav-text">JWT认证流程</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Hertz-JWT"><span class="nav-text">Hertz-JWT</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#Demo%E7%BB%93%E6%9E%84"><span class="nav-text">Demo结构</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#hertz-jwt-x2F-main-go"><span class="nav-text">hertz_jwt&#x2F;main.go</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#hertz-jwt-x2F-router-go"><span class="nav-text">hertz_jwt&#x2F;router.go</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#github-com-hertz-contrib-106-119-116-x40-x76-49-46-x30-46-48-auth-jwt-go"><span class="nav-text">github.com\hertz-contrib\jwt@v1.0.0 \auth_jwt.go</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#hertz-jwt-x2F-mw-x2F-jwt-go"><span class="nav-text">hertz_jwt&#x2F;mw&#x2F;jwt.go</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%8E%88%E6%9D%83"><span class="nav-text">授权</span></a></li></ol></li></ol>
-
+<div id="post-next-prev" class="row">
+    <div class="col-lg-12">
+        <!-- title -->
+        <h5 class="trm-title-with-divider">
+            Other Articles
+            <span data-number="02"></span>
+        </h5>
     </div>
-</div>
-            </div>
-        
-    </div>
+    
+    
 </div>
 
-
-                
-
-            </div>
+    
 
 
 
+                    <div class="trm-divider footer-divider"></div>
+
+                    <!-- footer -->
+                    <footer class="trm-scroll-animation" data-scroll data-scroll-offset="50">
+
+    
+        <div class="trm-footer-item">
+            <a rel="noopener" href="https://beian.miit.gov.cn/" target="_blank">晋ICP备2023001486号</a>
         </div>
+    
 
-        <div class="page-main-content-bottom">
-            <footer class="footer">
-    <div class="info-container">
-        <div class="copyright-info info-item">
-            &copy;
-            
-              <span>2023</span>
-              -
-            
-            2023&nbsp;<i class="fa-solid fa-heart icon-animate"></i>&nbsp;<a href="/">zyta0. 版权所有.</a>
+    
+        <div class="trm-footer-item">
+            <span>© 2023- 2023</span>
+            <span class="footer-separator"data-separator=" · "></span>
+            <span class="trm-accent-color">张.</span>
         </div>
-        
-            <script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
-            <div class="website-count info-item">
-                
-                    <span id="busuanzi_container_site_uv">
-                        访问人数&nbsp;<span id="busuanzi_value_site_uv"></span>&ensp;
-                    </span>
-                
-                
-                    <span id="busuanzi_container_site_pv">
-                        总访问量&nbsp;<span id="busuanzi_value_site_pv"></span>
-                    </span>
-                
-            </div>
-        
-        <div class="theme-info info-item">
-            由 <a target="_blank" href="https://hexo.io">Hexo</a> 驱动&nbsp;|&nbsp;主题&nbsp;<a class="theme-version" target="_blank" href="https://github.com/EvanNotFound/hexo-theme-redefine">Redefine v1.0.0</a>
-        </div>
-        
-        
-        <script async data-pjax defer>
-            function odometer_init(){
-                    let el = document.getElementsByClassName('odometer');
-                    for (i = 0; i < el.length; i++) {
-                        od = new Odometer({
-                            el: el[i],
-                            format: '( ddd).dd',
-                            duration: 200
-                        });
-                    }
-            }
-            odometer_init();
-        </script>
-        <div id="start_time_div" style="display:none">
-            2023/2/2 17:45:14
-        </div>
-        
-            <div>
-                博客已运行 <span class="odometer" id="runtime_days" ></span> 天 <span class="odometer" id="runtime_hours"></span> 小时 <span class="odometer" id="runtime_minutes"></span> 分钟 <span class="odometer" id="runtime_seconds"></span> 秒
-            </div>
-        
-        
+    
 
-        
-        
-    </div>  
+      
+
+    
+        <div class="trm-footer-item">
+            The blog has been lovely to run <span id="since" class="trm-accent-color"></span> day
+        </div>
+     
+
+     
 </footer>
-        </div>
-    </div>
-
-    
-        <div class="post-tools">
-            <div class="post-tools-container">
-    <ul class="tools-list">
-        <!-- TOC aside toggle -->
-        
-            <li class="right-bottom-tools page-aside-toggle">
-                <i class="fa-regular fa-outdent"></i>
-            </li>
-        
-
-        <!-- go comment -->
-        
-    </ul>
-</div>
-
-        </div>
-    
-
-    <div class="right-bottom-side-tools">
-        <div class="side-tools-container">
-    <ul class="unfolded-tools-list">
-        <li class="right-bottom-tools tool-font-adjust-plus flex-center">
-            <i class="fa-regular fa-magnifying-glass-plus"></i>
-        </li>
-
-        <li class="right-bottom-tools tool-font-adjust-minus flex-center">
-            <i class="fa-regular fa-magnifying-glass-minus"></i>
-        </li>
-
-        <li class="right-bottom-tools tool-expand-width flex-center">
-            <i class="fa-regular fa-expand"></i>
-        </li>
-
-        <li class="right-bottom-tools tool-dark-light-toggle flex-center">
-            <i class="fa-regular fa-moon"></i>
-        </li>
-
-        <!-- rss -->
-        
-
-        
-            <li class="right-bottom-tools tool-scroll-to-top flex-center">
-                <i class="fa-regular fa-arrow-up"></i>
-            </li>
-        
-
-        <li class="right-bottom-tools tool-scroll-to-bottom flex-center">
-            <i class="fa-regular fa-arrow-down"></i>
-        </li>
-    </ul>
-
-    <ul class="folded-tools-list">
-        <li class="right-bottom-tools tool-toggle-show flex-center">
-            <i class="fa-regular fa-cog fa-spin"></i>
-        </li>
-        
-    </ul>
-</div>
-
-    </div>
-
-    <div class="image-viewer-container">
-    <img src="">
-</div>
-
-
-    
-        <div class="search-pop-overlay">
-    <div class="popup search-popup">
-        <div class="search-header">
-          <span class="search-input-field-pre">
-            <i class="fa-solid fa-keyboard"></i>
-          </span>
-            <div class="search-input-container">
-                <input autocomplete="off"
-                       autocorrect="off"
-                       autocapitalize="off"
-                       placeholder="搜索..."
-                       spellcheck="false"
-                       type="search"
-                       class="search-input"
-                >
-            </div>
-            <span class="popup-btn-close">
-                <i class="fa-solid fa-times"></i>
-            </span>
-        </div>
-        <div id="search-result">
-            <div id="no-result">
-                <i class="fa-solid fa-spinner fa-spin-pulse fa-5x fa-fw"></i>
-            </div>
-        </div>
-    </div>
-</div>
-
-    
-
-
-</main>
-
-
-
-
-<script src="/js/utils.js"></script>
-
-<script src="/js/main.js"></script>
-
-<script src="/js/layouts/menu-shrink.js"></script>
-
-<script src="/js/tools/go-top-bottom.js"></script>
-
-<script src="/js/tools/dark-light-toggle.js"></script>
-
-
-
-    
-<script src="/js/tools/local-search.js"></script>
-
-
-
-
-    
-<script src="/js/tools/code-block.js"></script>
-
-
-
-
-    
-<script src="/js/layouts/lazyload.js"></script>
-
-
-
-
-    
-<script src="/js/tools/runtime.js"></script>
-
-    
-<script src="/js/layouts/odometer.min.js"></script>
-
-    
-<link rel="stylesheet" href="/css/odometer-theme-minimal.css">
-
-
-
-<div class="post-scripts pjax">
-    
-        
-<script src="/js/tools/toc-toggle.js"></script>
-
-<script src="/js/libs/anime.min.js"></script>
-
-<script src="/js/layouts/toc.js"></script>
-
-    
-    
-</div>
-
-
-    
-<script src="/js/libs/pjax.min.js"></script>
 
 <script>
-    window.addEventListener('DOMContentLoaded', () => {
-        window.pjax = new Pjax({
-            selectors: [
-                'head title',
-                '.page-container',
-                '.pjax'
-            ],
-            history: true,
-            debug: false,
-            cacheBust: false,
-            timeout: 0,
-            analytics: false,
-            currentUrlFullReload: false,
-            scrollRestoration: false,
-            // scrollTo: true,
-        });
-
-        document.addEventListener('pjax:send', () => {
-            REDEFINE.utils.pjaxProgressBarStart();
-        });
-
-        document.addEventListener('pjax:complete', () => {
-            REDEFINE.utils.pjaxProgressBarEnd();
-            window.pjax.executeScripts(document.querySelectorAll('script[data-pjax], .pjax script'));
-            REDEFINE.refresh();
-        });
-    });
+    function show_date_time () {
+        var BirthDay = new Date("02/02/2023 17:45:14");
+        var today = new Date();
+        var timeold = (today.getTime() - BirthDay.getTime());
+        var msPerDay = 24 * 60 * 60 * 1000
+        var day = Math.floor(timeold / msPerDay)
+        since.innerHTML = day
+    }
+    show_date_time()
 </script>
+ 
+                    <!-- footer end -->
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+            <!-- body end -->
+
+            <div class="trm-fixed-container" data-scroll data-scroll-sticky data-scroll-target=".locomotive-scroll__sticky-target" data-scroll-offset="-10">
+    
+        <div class="trm-fixed-btn" data-title="Read Mode" onclick="asyncFun.switchReadMode()">
+            <i class="iconfont fas fa-book-reader"></i>
+        </div>
+    
+    
+        <div class="trm-fixed-btn" data-title="Toggle between single-column and double-column" onclick="asyncFun.switchSingleColumn()">
+            <i class="iconfont fas fa-arrows-alt-h"></i>
+        </div>
+    
+    <div id="trm-back-top" class="trm-fixed-btn" data-title="Back To Top">
+        <i class="iconfont fas fa-arrow-up"></i>
+    </div>
+</div>
+          </div>
+        </div>
+      </div>
+      <!-- scroll container end -->
+
+  </div>
+  <!-- app wrapper end -->
+
+  
+  <!-- Plugin -->
 
 
+
+
+    
+    
+<script src="https://unpkg.com/locomotive-scroll@4.1.4/dist/locomotive-scroll.min.js"></script>
+
+    
+<script src="https://unpkg.com/@fancyapps/ui@4.0/dist/fancybox.umd.js"></script>
+
+    
+
+    
+        <script src="/js/plugins/typing.js?v=2.0.3"></script>
+    
+
+    
+
+    <!-- 数学公式 -->
+    
+
+    <!-- 评论插件 -->
+    
+        
+
+        
+    
+
+
+
+<!-- CDN -->
+
+
+    
+
+    
+
+    
+
+
+
+
+    <!-- Service Worker -->
+    
+    <!-- baidu push -->
+    
+
+
+<script id="async-script" src="/js/main.js?v=2.0.3"></script>
 
 </body>
+
 </html>
