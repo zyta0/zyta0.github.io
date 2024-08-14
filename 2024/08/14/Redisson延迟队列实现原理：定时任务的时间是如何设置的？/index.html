@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta http-equiv="content-type" content="text/html; charset=utf-8">
+<meta name="x5-fullscreen" content="true">
+<meta name="full-screen" content="yes">
+<meta name="theme-color" content="#317EFB" />
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=0" name="viewport">
+<meta name="description" content="我们都知道Redisson延迟队列内部用到了定时任务，那么定时任务的时间间隔是如何设置的？是固定时间间隔吗？文章接下来简要介绍了Redisson延迟队列的原理，这是为了便于大家理解源码，通过分析Redisson延迟队列的源码后，相信大家会解开标题中的问题，对于Redisson延迟队列的实现原理也会有更深的理解。 简要原理Redisson的延迟队列主要基于ZSET + LIST + 定时任务 +pu">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Redisson延迟队列实现原理：定时任务的时间是如何设置的？">
+<meta property="og:url" content="http://example.com/2024/08/14/Redisson%E5%BB%B6%E8%BF%9F%E9%98%9F%E5%88%97%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86%EF%BC%9A%E5%AE%9A%E6%97%B6%E4%BB%BB%E5%8A%A1%E7%9A%84%E6%97%B6%E9%97%B4%E6%98%AF%E5%A6%82%E4%BD%95%E8%AE%BE%E7%BD%AE%E7%9A%84%EF%BC%9F/index.html">
+<meta property="og:site_name" content="涛声依旧">
+<meta property="og:description" content="我们都知道Redisson延迟队列内部用到了定时任务，那么定时任务的时间间隔是如何设置的？是固定时间间隔吗？文章接下来简要介绍了Redisson延迟队列的原理，这是为了便于大家理解源码，通过分析Redisson延迟队列的源码后，相信大家会解开标题中的问题，对于Redisson延迟队列的实现原理也会有更深的理解。 简要原理Redisson的延迟队列主要基于ZSET + LIST + 定时任务 +pu">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://example.com/img/404.jpg">
+<meta property="article:published_time" content="2024-08-14T15:15:12.000Z">
+<meta property="article:modified_time" content="2024-08-14T15:23:35.061Z">
+<meta property="article:author" content="John Doe">
+<meta property="article:tag" content="Redisson">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://example.com/img/404.jpg">
+
+
+<title >Redisson延迟队列实现原理：定时任务的时间是如何设置的？</title>
+
+<!-- Favicon -->
+
+    <link href='/img/favicon.svg?v=2.0.3' rel='icon' type='image/png' sizes='16x16' ></link>
+
+
+    <link href='/img/favicon.svg?v=2.0.3' rel='icon' type='image/png' sizes='32x32' ></link>
+
+
+    <link href='/apple-touch-icon.png?v=2.0.3' rel='apple-touch-icon' sizes='180x180' ></link>
+
+
+    <link href='/site.webmanifest' rel='manifest' ></link>
+
+
+<!-- Plugin -->
+
+
+
+
+    
+<link rel="stylesheet" href="/css/plugins/bootstrap.row.css">
+
+    
+<link rel="stylesheet" href="https://unpkg.com/locomotive-scroll@4.1.4/dist/locomotive-scroll.min.css">
+
+    
+<link rel="stylesheet" href="https://unpkg.com/@fancyapps/ui@4.0/dist/fancybox.css">
+
+    
+    
+
+
+
+
+<!-- Icon -->
+
+    
+<link rel="stylesheet" href="/css/plugins/font-awesome.min.css">
+
+
+
+
+<!-- Variable -->
+<script>window.ASYNC_CONFIG = {"hostname":"example.com","author":"John Doe","root":"/","typed_text":["欢迎来到我的博客嘿嘿"],"theme_version":"2.0.3","theme":{"switch":true,"default":"auto"},"favicon":{"logo":null,"icon16":"/img/favicon.svg","icon32":"/img/favicon.svg","appleTouchIcon":"apple-touch-icon.png","webmanifest":"/site.webmanifest","visibilitychange":true,"hidden":"failure.ico","showText":"(/≧▽≦/)咦！又好了！","hideText":"(●—●)喔哟，崩溃啦！"},"i18n":{"placeholder":"搜索...","empty":"找不到您查询的内容: ${query}","hits":"找到 ${hits} 条结果","hits_time":"找到 ${hits} 条结果（用时 ${time} 毫秒）","author":"本文作者：","copyright_link":"本文链接：","copyright_license_title":"版权声明：","copyright_license_content":"本博客所有文章除特别声明外，均默认采用 undefined 许可协议。","copy_success":"复制成功","copy_failure":"复制失败","open_read_mode":"进入阅读模式","exit_read_mode":"退出阅读模式","notice_outdate_message":"距离上次更新已经 undefined 天了, 文章内容可能已经过时。","just":"刚刚","min":"分钟前","hour":"小时前","day":"天前","month":"个月前"},"swup":false,"plugin":{"flickr_justified_gallery":"https://unpkg.com/flickr-justified-gallery@latest/dist/fjGallery.min.js"},"icons":{"sun":"far fa-sun","moon":"far fa-moon","play":"fas fa-play","email":"far fa-envelope","next":"fas fa-arrow-right","calendar":"far fa-calendar-alt","clock":"far fa-clock","user":"far fa-user","back_top":"fas fa-arrow-up","close":"fas fa-times","search":"fas fa-search","reward":"fas fa-hand-holding-usd","user_tag":"fas fa-user-alt","toc_tag":"fas fa-th-list","read":"fas fa-book-reader","arrows":"fas fa-arrows-alt-h","double_arrows":"fas fa-angle-double-down","copy":"fas fa-copy"},"icontype":"font","highlight":{"plugin":"highlighjs","theme":true,"copy":true,"lang":true,"title":"mac","height_limit":200}};</script>
+<script id="async-page-config">window.PAGE_CONFIG = {"isPost":true,"isHome":false,"postUpdate":"2024-08-14 23:23:35"};</script>
+
+<!-- Theme mode css -->
+<link data-swup-theme rel="stylesheet" href="/css/index.css?v=2.0.3" id="trm-switch-style">
+<script>
+    let defaultMode = ASYNC_CONFIG.theme.default !=='auto' ?  ASYNC_CONFIG.theme.default : (window.matchMedia("(prefers-color-scheme: light)").matches ? 'style-light' : 'style-dark')
+    let catchMode = localStorage.getItem('theme-mode') || defaultMode;
+    let type = catchMode === 'style-dark' ? 'add' : 'remove';
+    document.documentElement.classList[type]('dark')
+</script>
+
+<!-- CDN -->
+
+
+    
+    
+
+
+
+<!-- Site Analytics -->
+ 
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+<body>
+
+  <!-- app wrapper -->
+  <div class="trm-app-frame">
+
+    <!-- page preloader -->
+    <div class="trm-preloader">
+    <div class="trm-holder">
+        <div class="preloader">
+            <div></div>
+            <div></div>
+            <div></div>
+            <div></div>
+            <div></div>
+            <div></div>
+            <div></div>
+            <div></div>
+            <div></div>
+            <div></div>
+        </div>
+    </div>
+</div>
+    <!-- page preloader end -->
+
+    <!-- change mode preloader -->
+    <div class="trm-mode-swich-animation-frame">
+    <div class="trm-mode-swich-animation">
+        <i class="i-sun"><i class="iconfont far fa-sun"></i></i>
+        <div class="trm-horizon"></div>
+        <i class="i-moon"><i class="iconfont far fa-moon"></i></i>
+    </div>
+</div>
+    <!-- change mode preloader end -->
+
+      <!-- scroll container -->
+      <div id="trm-dynamic-content" class="trm-swup-animation">
+        <div id="trm-scroll-container" class="trm-scroll-container" data-scroll-container style="opacity: 0">
+          <div data-scroll-section id="content" class="trm-scroll-section">
+
+            <div class="locomotive-scroll__sticky-target" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; pointer-events: none;"></div>
+
+            <!-- top bar -->
+            <header class="trm-top-bar" data-scroll data-scroll-sticky data-scroll-target=".locomotive-scroll__sticky-target" data-scroll-offset="-10">
+	<div class="container">
+		<div class="trm-left-side">
+			<!-- logo -->
+<a href="/" class="trm-logo-frame trm-anima-link">
+    
+    
+</a>
+<!-- logo end -->
+		</div>
+		<div class="trm-right-side">
+			<!-- menu -->
+<div class="trm-menu">
+    <nav>
+        <ul>
+            
+            <li class="menu-item-has-children ">
+                <a  href="/" target="">
+                    首页
+                </a>
+                
+            </li>
+            
+            <li class="menu-item-has-children ">
+                <a  href="/archives/" target="">
+                    归档
+                </a>
+                
+            </li>
+            
+        </ul>
+    </nav>
+</div>
+<!-- menu end -->
+			
+    <!-- mode switcher place -->
+    <div class="trm-mode-switcher-place">
+        <div class="trm-mode-switcher">
+            <i class="iconfont far fa-sun"></i>
+            <input class="tgl tgl-light" id="trm-swich" type="checkbox">
+            <label class="trm-swich" for="trm-swich"></label>
+            <i class="iconfont far fa-moon"></i>
+        </div>
+    </div>
+    <!-- mode switcher place end -->
+
+			
+		</div>
+		<div class="trm-menu-btn">
+			<span></span>
+		</div>
+	</div>
+</header>
+            <!-- top bar end -->
+
+            <!-- body -->
+            
+<div class="trm-content-start">
+    <!-- banner -->
+    <div class="trm-banner" data-scroll data-scroll-direction="vertical">
+    
+    <!-- banner cover -->
+    <img style="object-position:top;object-fit:cover;" alt="banner" class="trm-banner-cover" data-scroll data-scroll-direction="vertical" data-scroll-speed="-3" src="/img/banner.png">
+    <!-- banner cover end -->
+    
+
+    <!-- banner content -->
+    <div class="trm-banner-content trm-overlay">
+        <div class="container" data-scroll data-scroll-direction="vertical" data-scroll-speed="0">
+            <div class="row">
+                
+                <div class="col-lg-4"></div>
+                
+                <div class="col-lg-8">
+
+                    <!-- banner title -->
+                    <div class="trm-banner-text ">
+                        <div class="trm-label trm-mb-20">
+                            NEWS LETTER
+                        </div>
+                        <h1 class="trm-mb-30 trm-hsmb-font">
+                            Redisson延迟队列实现原理：定时任务的时间是如何设置的？
+                        </h1>
+
+                        
+                            <ul class="trm-breadcrumbs trm-label">
+                                <li>
+                                    <a href="/" class="trm-anima-link">Home</a>
+                                </li>
+                                <li>
+                                    <span>
+                                        2024
+                                    </span
+                                ></li>
+                            </ul>
+                        
+                    </div>
+                    <!-- banner title end -->
+
+                    <!-- scroll hint -->
+                    <a href="#about-triger" data-scroll-to="#about-triger" data-scroll-offset="-130" class="trm-scroll-hint-frame">
+                        <div class="trm-scroll-hint"></div>
+                        <span class="trm-label">Scroll down</span>
+                    </a>
+                    <!-- scroll hint end -->
+
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- banner content end -->
+</div>
+    <!-- banner end -->
+    <div class="container">
+        <div class="row">
+            
+                <div id="page-sidebar" class="col-lg-4 hidden-sm">
+                    <!-- main card -->
+                    
+
+<div class="trm-main-card-frame trm-sidebar">
+    <div class="trm-main-card" data-scroll data-scroll-repeat data-scroll-sticky data-scroll-target=".locomotive-scroll__sticky-target" data-scroll-offset="60"> 
+    
+        <div class="trm-user-tabs" id="sidebar-tabs">
+           <div class="trm-tabs-nav trm-mb-40" id="trm-tabs-nav">
+                <div data-to="tabs-user" class="trm-tabs-nav-item">
+                    <i class="iconfont fas fa-user-alt"></i>
+                </div>
+                <div data-to="tabs-toc" class="trm-tabs-nav-item active">
+                    <i class="iconfont fas fa-th-list"></i>
+                </div>
+           </div>
+            <div name="tabs-user" class="trm-tabs-item">
+                <!-- card header -->
+<div class="trm-mc-header">
+    <div class="trm-avatar-frame trm-mb-20">
+        <img alt="Avatar" class="trm-avatar trm-light-icon" src="https://ta0.oss-cn-beijing.aliyuncs.com/%E5%BE%AE%E4%BF%A1%E5%9B%BE%E7%89%87_20230310221138.jpg"> <img alt="Avatar" class="trm-avatar trm-dark-icon" src="https://ta0.oss-cn-beijing.aliyuncs.com/%E5%BE%AE%E4%BF%A1%E5%9B%BE%E7%89%87_20230310221146.jpg">
+    </div>
+    <h5 class="trm-name trm-mb-15">
+        涛声依旧
+    </h5>
+    
+        <div class="trm-label">
+            
+            <span class="trm-typed-text">
+                <!-- Words for theme.user.typedText -->
+            </span>
+        </div>
+    
+</div>
+<!-- card header end -->
+                <!-- sidebar social -->
+
+<div class="trm-divider trm-mb-40 trm-mt-40"></div>
+<div class="trm-social">
+    
+        <a href="https://github.com/zyta0?tab=repositories" title="github" rel="nofollow" target="_blank">
+            <i class="iconfont fab fa-github"></i>
+        </a>
+    
+</div>
+
+<!-- sidebar social end -->
+                <!-- info -->
+<div class="trm-divider trm-mb-40 trm-mt-40"></div>
+<ul class="trm-table trm-mb-20">
+    
+        <li>
+            <div class="trm-label">
+                地址:
+            </div>
+            <div class="trm-label trm-label-light">
+                山西
+            </div>
+        </li>
+    
+        <li>
+            <div class="trm-label">
+                年龄:
+            </div>
+            <div class="trm-label trm-label-light">
+                19
+            </div>
+        </li>
+    
+</ul>
+<!-- info end -->
+
+                
+    <div class="trm-divider trm-mb-40 trm-mt-40"></div>
+    <!-- action button -->
+    <div class="text-center">
+        <a href="mailto:948596698@qq.com" class="trm-btn">
+            联系我
+            <i class="iconfont far fa-envelope"></i>
+        </a>
+    </div>
+    <!-- action button end -->
+
+            </div>
+            <div name="tabs-toc" class="trm-tabs-item active">
+                <div class="post-toc">
+    <ol class="toc"><li class="toc-item toc-level-2"><a rel="nofollow" class="toc-link" href="#简要原理"  data-scroll-to="#简要原理"><span class="toc-number">1.</span> <span class="toc-text">简要原理</span></a></li><li class="toc-item toc-level-2"><a rel="nofollow" class="toc-link" href="#源码分析"  data-scroll-to="#源码分析"><span class="toc-number">2.</span> <span class="toc-text">源码分析</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a rel="nofollow" class="toc-link" href="#RedissonDelayedQueue的构造方法"  data-scroll-to="#RedissonDelayedQueue的构造方法"><span class="toc-number">2.1.</span> <span class="toc-text">RedissonDelayedQueue的构造方法</span></a></li><li class="toc-item toc-level-3"><a rel="nofollow" class="toc-link" href="#QueueTransferService"  data-scroll-to="#QueueTransferService"><span class="toc-number">2.2.</span> <span class="toc-text">QueueTransferService</span></a></li><li class="toc-item toc-level-3"><a rel="nofollow" class="toc-link" href="#QueueTransferTask-start"  data-scroll-to="#QueueTransferTask-start"><span class="toc-number">2.3.</span> <span class="toc-text">QueueTransferTask#start()</span></a></li><li class="toc-item toc-level-3"><a rel="nofollow" class="toc-link" href="#QueueTransferTask-scheduleTask"  data-scroll-to="#QueueTransferTask-scheduleTask"><span class="toc-number">2.4.</span> <span class="toc-text">QueueTransferTask#scheduleTask()</span></a></li><li class="toc-item toc-level-3"><a rel="nofollow" class="toc-link" href="#QueueTransferTask-pushTask"  data-scroll-to="#QueueTransferTask-pushTask"><span class="toc-number">2.5.</span> <span class="toc-text">QueueTransferTask#pushTask()</span></a></li><li class="toc-item toc-level-3"><a rel="nofollow" class="toc-link" href="#RedissonDelayedQueue-offer"  data-scroll-to="#RedissonDelayedQueue-offer"><span class="toc-number">2.6.</span> <span class="toc-text">RedissonDelayedQueue#offer()</span></a></li></ol></li><li class="toc-item toc-level-2"><a rel="nofollow" class="toc-link" href="#标题中的问题"  data-scroll-to="#标题中的问题"><span class="toc-number">3.</span> <span class="toc-text">标题中的问题</span></a></li></ol>
+</div>
+            </div>
+        </div>
+    
+    </div>
+</div>
+                    <!-- main card end -->
+                </div>
+            
+            <div id="page-content" class="col-lg-8">
+                <div class="trm-content" id="trm-content">
+                    <div data-scroll data-scroll-repeat data-scroll-offset="500" id="about-triger"></div>
+
+                    <div id="post-info" class="row hidden-sm">
+    <div class="col-sm-4">
+        <div class="trm-card trm-label trm-label-light text-center">
+            <i class="iconfont far fa-calendar-alt trm-icon"></i><br>
+            08/14
+        </div>
+    </div>
+    <div class="col-sm-4">
+        <div class="trm-card trm-label trm-label-light text-center">
+            <i class="iconfont far fa-clock trm-icon"></i><br>
+            23:15
+        </div>
+    </div>
+    <div class="col-sm-4">
+        <div id="post-author" class="trm-card trm-label trm-label-light text-center">
+            <i class="iconfont far fa-user trm-icon"></i><br>
+            John Doe
+        </div>
+    </div>
+</div>
+<div class="trm-card ">
+    <article id="article-container" class="trm-publication">
+    <p>我们都知道<code>Redisson</code>延迟队列内部用到了定时任务，那么定时任务的时间间隔是如何设置的？是固定时间间隔吗？文章接下来简要介绍了<code>Redisson</code>延迟队列的原理，这是为了便于大家理解源码，通过分析<code>Redisson</code>延迟队列的源码后，相信大家会解开标题中的问题，对于<code>Redisson</code>延迟队列的实现原理也会有更深的理解。</p>
+<h2 id="简要原理"><a href="#简要原理" class="headerlink" title="简要原理"></a>简要原理</h2><p><code>Redisson</code>的延迟队列主要基于<code>ZSET</code> + <code>LIST </code>+ 定时任务 +pub&#x2F;sub机制来实现，在<code>Redis</code>中一共有三个队列来实现此功能。</p>
+<p><code>ZSET</code>：<code>timeout_queue</code>存放未过期的消息，<code>value</code>为消息内容，<code>score</code>为消息过期时间</p>
+<p><code>LIST</code>有两个：<code>list0</code>按消息的投递顺序存放未过期的消息，<code>list1</code>存放过期的消息</p>
+<p>定时任务：定时从<code>timeout_queue</code>中获取过期的数据，移动到<code>list1</code>中，并从<code>list1</code>和<code>timeout_queue</code>中删除</p>
+<p>发布&#x2F;订阅机制：向<code>timeout_queue</code>中存入消息后，获取<code>timeout_queue</code>中的第一条消息是否和当前消息一样，如果一样，则将延迟任务的过期时间发布到<code>channel</code>，这样做是通知订阅者定时任务的时间需要改变</p>
+<h2 id="源码分析"><a href="#源码分析" class="headerlink" title="源码分析"></a>源码分析</h2><p>为方便大家理解先放一张方法之间的调用流程图</p>
+<p><img src="https://ta0.oss-cn-beijing.aliyuncs.com/image-20240814224939984.png" alt="image-20240814224939984" loading="lazy" onerror='this.onerror=null;this.src="/img/404.jpg"'></p>
+<p>为了深入理解<code>RedissonDelayedQueue</code>的原理，我们需要了解<code>RedissonDelayedQueue</code>、<code>QueueTransferService</code>、<code>QueueTransferTask</code>这三个类。<code>RedissonDelayedQueue</code>这个类中比较重要的方法是其构造方法，其次是<code>RedissonDelayedQueue#offer()</code>。<code>RedissonDelayedQueue</code>的构造方法串联起了<code>QueueTransferService.schedule()</code>、<code>QueueTransferTask#start()</code>、<code>QueueTransferTask#scheduleTask()</code>、<code>QueueTransferTask#pushTask()</code>、<code>QueueTransferTask#pushTaskAsync()</code>等一系列方法，因此本文以<code>RedissonDelayedQueue</code>的构造方法为线索来分析<code>RedissonDelayedQueue</code>的原理</p>
+<p>在进行源码分析之前，先对一些<code>RedissonDelayedQueue</code>中的一些变量做一下介绍：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">// 负责将过期消息从list0和timeout_queue转移到list1中</span><br><span class="line">private final QueueTransferService queueTransferService;</span><br><span class="line">// 当插入的消息是延迟队列中的第一条消息时，往此频道发布该消息的过期时间。Redisson订阅该频道，当有消息时就会更改定时任务的时间</span><br><span class="line">private final String channelName;</span><br><span class="line">// LIST类型，按消息的投递时间存放消息</span><br><span class="line">private final String queueName;</span><br><span class="line">// ZSET类型，存放未到期的消息</span><br><span class="line">private final String timeoutSetName;</span><br><span class="line">// LIST类型，存放过期的消息</span><br><span class="line">RedissonObject#name</span><br></pre></td></tr></table></figure>
+
+<h3 id="RedissonDelayedQueue的构造方法"><a href="#RedissonDelayedQueue的构造方法" class="headerlink" title="RedissonDelayedQueue的构造方法"></a><code>RedissonDelayedQueue</code>的构造方法</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br></pre></td><td class="code"><pre><span class="line">protected RedissonDelayedQueue(QueueTransferService queueTransferService, Codec codec, final CommandAsyncExecutor commandExecutor, String name) &#123;</span><br><span class="line">        super(codec, commandExecutor, name);</span><br><span class="line">        channelName = prefixName(&quot;redisson_delay_queue_channel&quot;, getName());</span><br><span class="line">        queueName = prefixName(&quot;redisson_delay_queue&quot;, getName());</span><br><span class="line">        timeoutSetName = prefixName(&quot;redisson_delay_queue_timeout&quot;, getName());</span><br><span class="line">        </span><br><span class="line">        QueueTransferTask task = new QueueTransferTask(commandExecutor.getConnectionManager()) &#123;</span><br><span class="line">            </span><br><span class="line">            @Override</span><br><span class="line">            protected RFuture&lt;Long&gt; pushTaskAsync() &#123;</span><br><span class="line">                return commandExecutor.evalWriteAsync(getName(), LongCodec.INSTANCE, RedisCommands.EVAL_LONG,</span><br><span class="line">                        &quot;local expiredValues = redis.call(&#x27;zrangebyscore&#x27;, KEYS[2], 0, ARGV[1], &#x27;limit&#x27;, 0, ARGV[2]); &quot;</span><br><span class="line">                      + &quot;if #expiredValues &gt; 0 then &quot;</span><br><span class="line">                          + &quot;for i, v in ipairs(expiredValues) do &quot;</span><br><span class="line">                              + &quot;local randomId, value = struct.unpack(&#x27;dLc0&#x27;, v);&quot;</span><br><span class="line">                              + &quot;redis.call(&#x27;rpush&#x27;, KEYS[1], value);&quot;</span><br><span class="line">                              + &quot;redis.call(&#x27;lrem&#x27;, KEYS[3], 1, v);&quot;</span><br><span class="line">                          + &quot;end; &quot;</span><br><span class="line">                          + &quot;redis.call(&#x27;zrem&#x27;, KEYS[2], unpack(expiredValues));&quot;</span><br><span class="line">                      + &quot;end; &quot;</span><br><span class="line">                        // get startTime from scheduler queue head task</span><br><span class="line">                      + &quot;local v = redis.call(&#x27;zrange&#x27;, KEYS[2], 0, 0, &#x27;WITHSCORES&#x27;); &quot;</span><br><span class="line">                      + &quot;if v[1] ~= nil then &quot;</span><br><span class="line">                         + &quot;return v[2]; &quot;</span><br><span class="line">                      + &quot;end &quot;</span><br><span class="line">                      + &quot;return nil;&quot;,</span><br><span class="line">                      Arrays.&lt;Object&gt;asList(getName(), timeoutSetName, queueName), //KEYS</span><br><span class="line">                      System.currentTimeMillis(), 100); // ARGV</span><br><span class="line">            &#125;</span><br><span class="line">            </span><br><span class="line">            @Override</span><br><span class="line">            protected RTopic getTopic() &#123;</span><br><span class="line">                return new RedissonTopic(LongCodec.INSTANCE, commandExecutor, channelName);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;;</span><br><span class="line">        </span><br><span class="line">        queueTransferService.schedule(queueName, task);</span><br><span class="line">        </span><br><span class="line">        this.queueTransferService = queueTransferService;</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+
+<p>构造方法主要做了下面三件事：</p>
+<ol>
+<li><p>初始化<code>RedissonDelayedQueue</code>中的变量</p>
+</li>
+<li><p>创建了<code>QueueTransferTask</code>类并重写了<code>pushTaskAsync()</code>和<code>getTopic()</code>方法</p>
+</li>
+<li><p>调用<code>QueueTransferService#schedule()</code>方法调度刚刚创建的<code>task</code></p>
+</li>
+</ol>
+<p>这里我们先看下重写的<code>QueueTransferTask#pushTaskAsync()</code>干了些什么，关于类<code>QueueTransferService</code>和<code>QueueTransferTask</code>，光看类名就能猜到这二者有一定的关联，我们下文介绍。</p>
+<p><code>pushTaskAsync()</code>这个方法使用命令执行器执行了一段<code>Lua</code>脚本，这段<code>Lua</code>脚本的逻辑是这样的：</p>
+<ol>
+<li><p>从<code>timeout_queue</code>中获取<code>score</code>值为<code>0</code> -<code> currentTimeMillis</code>之间的元素，限制100个，如果返回有数据，那么将这些数据添加到<code>list1</code>中，并从<code>list0</code>中删除，最后从<code>timeout_queue</code>中删除。</p>
+</li>
+<li><p>查看<code>timeout_queue</code>中的首个元素，如果有，那么将其过期时间返回，否则返回<code>nil</code>。</p>
+</li>
+</ol>
+<p><strong>其实第一点中的内容也就是我们上述的定时任务中的逻辑，那么定时任务在哪里开启呢？定时任务的时间又是如何设置的呢？</strong>接下来我们就要看<code>QueueTransferService</code>和<code>QueueTransferTask</code>这两个类了。</p>
+<h3 id="QueueTransferService"><a href="#QueueTransferService" class="headerlink" title="QueueTransferService"></a><code>QueueTransferService</code></h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line">public class QueueTransferService &#123;</span><br><span class="line"></span><br><span class="line">    private final ConcurrentMap&lt;String, QueueTransferTask&gt; tasks = new ConcurrentHashMap&lt;&gt;();</span><br><span class="line">    </span><br><span class="line">    public synchronized void schedule(String name, QueueTransferTask task) &#123;</span><br><span class="line">        QueueTransferTask oldTask = tasks.putIfAbsent(name, task);</span><br><span class="line">        if (oldTask == null) &#123;</span><br><span class="line">            task.start();</span><br><span class="line">        &#125; else &#123;</span><br><span class="line">            oldTask.incUsage();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    public synchronized void remove(String name) &#123;</span><br><span class="line">        QueueTransferTask task = tasks.get(name);</span><br><span class="line">        if (task != null) &#123;</span><br><span class="line">            if (task.decUsage() == 0) &#123;</span><br><span class="line">                tasks.remove(name, task);</span><br><span class="line">                task.stop();</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125; </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这段源码不难理解，<code>QueueTransferService</code>中维护了一个<code>Map</code>，<code>schedule()</code>方法根据队列名获取到对应的<code>QueueTransferTask</code>并启动，如果已存在，代表着这个<code>task</code>已经启动，就不会再启动了，只会增加其使用次数。<code>QueueTransferTask#start()</code>方法在<code>QueueTransferService</code>中被调用，因此我们从这个方法开始看。</p>
+<h3 id="QueueTransferTask-start"><a href="#QueueTransferTask-start" class="headerlink" title="QueueTransferTask#start()"></a><code>QueueTransferTask#start()</code></h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">public void start() &#123;</span><br><span class="line">        RTopic schedulerTopic = getTopic();</span><br><span class="line">        statusListenerId = schedulerTopic.addListener(new BaseStatusListener() &#123;</span><br><span class="line">            @Override</span><br><span class="line">            public void onSubscribe(String channel) &#123;</span><br><span class="line">                pushTask();</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;);</span><br><span class="line">        </span><br><span class="line">        messageListenerId = schedulerTopic.addListener(Long.class, new MessageListener&lt;Long&gt;() &#123;</span><br><span class="line">            @Override</span><br><span class="line">            public void onMessage(CharSequence channel, Long startTime) &#123;</span><br><span class="line">                scheduleTask(startTime);</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;);</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+
+<p><code>QueueTransferTask#start()</code>方法中的代码比较简单，就做了两件事：</p>
+<p>1.获取到<code>RTopic</code></p>
+<p>2.为<code>topic</code>添加订阅事件和消息事件监听器，分别会调用<code>pushTask()</code>和<code>scheduleTask()</code>这两个方法</p>
+<p>接下来看<code>scheduleTask()</code>方法</p>
+<h3 id="QueueTransferTask-scheduleTask"><a href="#QueueTransferTask-scheduleTask" class="headerlink" title="QueueTransferTask#scheduleTask()"></a><code>QueueTransferTask#scheduleTask()</code></h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br></pre></td><td class="code"><pre><span class="line">// 保存了正在执行的TimeoutTask</span><br><span class="line">private final AtomicReference&lt;TimeoutTask&gt; lastTimeout = new AtomicReference&lt;TimeoutTask&gt;();</span><br><span class="line"></span><br><span class="line">private void scheduleTask(final Long startTime) &#123;</span><br><span class="line">    TimeoutTask oldTimeout = lastTimeout.get();</span><br><span class="line">    if (startTime == null) &#123;</span><br><span class="line">        return;</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    if (oldTimeout != null) &#123;</span><br><span class="line">        oldTimeout.getTask().cancel();</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    long delay = startTime - System.currentTimeMillis();</span><br><span class="line">    if (delay &gt; 10) &#123;</span><br><span class="line">        Timeout timeout = connectionManager.newTimeout(new TimerTask() &#123;                    </span><br><span class="line">            @Override</span><br><span class="line">            public void run(Timeout timeout) throws Exception &#123;</span><br><span class="line">                pushTask();</span><br><span class="line">                </span><br><span class="line">                TimeoutTask currentTimeout = lastTimeout.get();</span><br><span class="line">                if (currentTimeout.getTask() == timeout) &#123;</span><br><span class="line">                    lastTimeout.compareAndSet(currentTimeout, null);</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;, delay, TimeUnit.MILLISECONDS);</span><br><span class="line">        if (!lastTimeout.compareAndSet(oldTimeout, new TimeoutTask(startTime, timeout))) &#123;</span><br><span class="line">            timeout.cancel();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125; else &#123;</span><br><span class="line">        pushTask();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><code>startTime</code>是<code>timeout_queue</code>中首个元素的过期时间，这段方法的主要逻辑是这样的：</p>
+<ol>
+<li><p>如果有正在执行的<code>TimeoutTask</code>，则取消这个定时任务</p>
+</li>
+<li><p>获取到过期时间到现在时间的差值，如果大于10，则创建一个定时任务，定时任务到期后就会执行 <code>pushTask()</code>，然后将这个定时任务<code>CAS</code>设置为<code>lastTimeout</code>，如果设置不成功，说明又收到了消息并且已经更新了<code>lastTimeout</code>，需要将刚创建的定时任务取消。</p>
+</li>
+<li><p>如果过期时间小于10，执行 <code>pushTask()</code></p>
+</li>
+</ol>
+<p>接下来看<code>pushTask()</code>方法</p>
+<h3 id="QueueTransferTask-pushTask"><a href="#QueueTransferTask-pushTask" class="headerlink" title="QueueTransferTask#pushTask()"></a><code>QueueTransferTask#pushTask()</code></h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">private void pushTask() &#123;</span><br><span class="line">    RFuture&lt;Long&gt; startTimeFuture = pushTaskAsync();</span><br><span class="line">    startTimeFuture.onComplete((res, e) -&gt; &#123;</span><br><span class="line">        if (e != null) &#123;</span><br><span class="line">            if (e instanceof RedissonShutdownException) &#123;</span><br><span class="line">                return;</span><br><span class="line">            &#125;</span><br><span class="line">            log.error(e.getMessage(), e);</span><br><span class="line">            scheduleTask(System.currentTimeMillis() + 5 * 1000L);</span><br><span class="line">            return;</span><br><span class="line">        &#125;</span><br><span class="line">        </span><br><span class="line">        if (res != null) &#123;</span><br><span class="line">            scheduleTask(res);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>总结一下这个方法：</p>
+<ol>
+<li><p>这个方法其实就是执行了<code>pushTaskAsync()</code>方法，这个方法还眼熟吗？在<code>RedissonDelayedQueue</code>的构造方法中创建<code>QueueTransferTask</code>时这个方法被重写，具体逻辑可以看上文回顾一下</p>
+</li>
+<li><p>如果出现异常，执行<code>scheduleTask(System.currentTimeMillis() + 5 * 1000L);</code>，而<code>scheduleTask()</code>方法我们已经看过，即创建定时任务执行<code>pushTask()</code>，那么这一行代码的意思也就是<code>5s</code>后重新执行<code>pushTask()</code></p>
+</li>
+<li><p>如果没有问题，则将res传入 <code>scheduleTask();</code>这里有个问题，res是什么呢？这个就要追溯到<code>pushTaskAsync()</code>方法了，上文我们分析过，如果<code>timeout_queue</code>中还有元素的话，会返回第一个元素的过期时间，没有则返回<code>null</code></p>
+</li>
+</ol>
+<p>至此，<code>RedissonDelayedQueue</code>的构造方法所引出的一系列方法，我们就都看完了，可以发现，这些方法都是有关定时任务的，可能到这里大家还是有些懵懵的，没事，看完<code>RedissonDelayedQueue</code>的最后两块拼图<code>RedissonDelayedQueue#offer()</code>方法和<code>Redisson#take()</code>方法，相信你就会柳暗花明。</p>
+<h3 id="RedissonDelayedQueue-offer"><a href="#RedissonDelayedQueue-offer" class="headerlink" title="RedissonDelayedQueue#offer()"></a><code>RedissonDelayedQueue#offer()</code></h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">public void offer(V e, long delay, TimeUnit timeUnit) &#123;</span><br><span class="line">    get(offerAsync(e, delay, timeUnit));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><code>RedissonDelayedQueue#offer()</code>本质上是调用了<code>RedissonDelayedQueue#offerAsync()</code>，只不过后者方法返回的是一个<code>Future</code>对象，前者调用了后者返回结果的<code>get()</code>方法</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line">public RFuture&lt;Void&gt; offerAsync(V e, long delay, TimeUnit timeUnit) &#123;</span><br><span class="line">    if (delay &lt; 0) &#123;</span><br><span class="line">        throw new IllegalArgumentException(&quot;Delay can&#x27;t be negative&quot;);</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    long delayInMs = timeUnit.toMillis(delay);</span><br><span class="line">    long timeout = System.currentTimeMillis() + delayInMs;</span><br><span class="line"> </span><br><span class="line">    long randomId = ThreadLocalRandom.current().nextLong();</span><br><span class="line">    return commandExecutor.evalWriteAsync(getName(), codec, RedisCommands.EVAL_VOID,</span><br><span class="line">            &quot;local value = struct.pack(&#x27;dLc0&#x27;, tonumber(ARGV[2]), string.len(ARGV[3]), ARGV[3]);&quot; </span><br><span class="line">          + &quot;redis.call(&#x27;zadd&#x27;, KEYS[2], ARGV[1], value);&quot;</span><br><span class="line">          + &quot;redis.call(&#x27;rpush&#x27;, KEYS[3], value);&quot;</span><br><span class="line">          // if new object added to queue head when publish its startTime </span><br><span class="line">          // to all scheduler workers </span><br><span class="line">          + &quot;local v = redis.call(&#x27;zrange&#x27;, KEYS[2], 0, 0); &quot;</span><br><span class="line">          + &quot;if v[1] == value then &quot;</span><br><span class="line">             + &quot;redis.call(&#x27;publish&#x27;, KEYS[4], ARGV[1]); &quot;</span><br><span class="line">          + &quot;end;&quot;,</span><br><span class="line">          Arrays.&lt;Object&gt;asList(getName(), timeoutSetName, queueName, channelName), </span><br><span class="line">          timeout, randomId, encode(e));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>其实<code>offerAsync()</code>方法的源码比较简单，主要是理解这段<code>Lua</code>代码：</p>
+<p>1.向<code>list0</code>和<code>timeout_queue</code>存入消息</p>
+<p>2.存入之后查看<code>timeout_queue</code>的第一个消息是否是刚刚插入的消息，如果是，则向<code>channel</code>中发布这条消息的过期时间。上面我们看<code>QueueTransferTask#start()</code>方法时知道这个方法内部为Topic添加了消息监听器，这里向channel发送了首条消息的过期时间，那么<code>Topic</code>对应的消息监听器监听到这个消息就会执行<code>QueueTransferTask#scheduleTask()</code>方法更改定时器时间。</p>
+<p><strong>为什么存入的消息是第一条就要向<code>channel</code>中发布这条消息的过期时间？或者说为什么<code>Redisson</code>实现延迟队列为什么要使用发布订阅&#x2F;机制？</strong></p>
+<p>我们先来看一下<code>QueueTransferTask#scheduleTask()</code>的参数可能来自什么途径：</p>
+<ol>
+<li><p><code>QueueTransferTask#pushTaskAsync()</code>执行完之后返回<code>timeout_queue</code>中首条消息的过期时间</p>
+</li>
+<li><p><code>RedissonDelayedQueue#offerAsync()</code>执行时如果插入的消息是<code>timeout_queue</code>的首条消息发布出去的过期时间</p>
+</li>
+</ol>
+<p>假设上述1正常执行返回了<code>timeout_queue</code>中首条消息的过期时间<code>T1</code>，<code>QueueTransferTask#scheduleTask()</code>创建了定时时间为<code>T1</code>的定时任务，此时时间小于<code>T</code>且<code>timeout_queue</code>进来一条消息<code>m</code>，其过期时间<code>T2</code> &lt; <code>T1</code>，成为了<code>timeout_queue</code>中的第一条消息，如果此时不更改定时任务的时间，则会导致<code>m</code>的消费被延迟。</p>
+<p>最后就是<code>RedissonBlockingDeque#take()</code>方法了，这个方法源码比较简单，其实执行的是<code>BLPOP list1 0</code>，从<code>list1</code>左侧一直阻塞获取直到获取到一条数据。</p>
+<h2 id="标题中的问题"><a href="#标题中的问题" class="headerlink" title="标题中的问题"></a>标题中的问题</h2><p>通过源码的分析，我们知道定时任务的时间在<code>QueueTransferTask#scheduleTask()</code>中设置，我们又知道<code>QueueTransferTask#scheduleTask()</code>的参数始终是<code>timeout_queue</code>中首个元素的过期时间，所以这个定时任务的定时时间也始终<code>timeout_queue</code>中首个元素的过期时间。</p>
+
+</article>
+    
+    
+</div>
+<div id="post-next-prev" class="row">
+    <div class="col-lg-12">
+        <!-- title -->
+        <h5 class="trm-title-with-divider">
+            其他文章
+            <span data-number="02"></span>
+        </h5>
+    </div>
+    
+    
+        <div class="col-lg-6">
+    <div class="trm-blog-card trm-scroll-animation" data-scroll data-scroll-offset="40">
+        <a href="/2023/02/03/%E4%BD%BF%E7%94%A8Go-HTTP%E6%A1%86%E6%9E%B6Hertz%E5%AE%9E%E7%8E%B0JWT%E8%AE%A4%E8%AF%81/" class="trm-cover-frame trm-anima-link">
+            
+            
+                <img alt="cover" class="no-fancybox" src="https://ta0.oss-cn-beijing.aliyuncs.com/ac6eddc451da81cb1a83519d0cb4a11f08243150.webp">
+            
+        </a>
+        
+        <div class="trm-card-descr">
+            <div class="trm-label trm-category trm-mb-20">
+                <a href=" #.">
+                    未分类
+                </a>
+            </div>
+            <h5>
+                <a href="/2023/02/03/%E4%BD%BF%E7%94%A8Go-HTTP%E6%A1%86%E6%9E%B6Hertz%E5%AE%9E%E7%8E%B0JWT%E8%AE%A4%E8%AF%81/" class="trm-anima-link">
+                    使用Go HTTP框架Hertz实现JWT认证
+                </a>
+            </h5>
+            <div class="trm-divider trm-mb-20 trm-mt-20"></div>
+            <ul class="trm-card-data trm-label">
+                <li>23/02/03</li>
+                <li>19:32</li>
+                
+                
+            </ul>
+        </div>
+    </div>
+</div>
+    
+</div>
+
+    
+
+
+
+                    <div class="trm-divider footer-divider"></div>
+
+                    <!-- footer -->
+                    <footer class="trm-scroll-animation" data-scroll data-scroll-offset="50">
+
+    
+        <div class="trm-footer-item">
+            <a rel="noopener" href="https://beian.miit.gov.cn/" target="_blank">晋ICP备2023001486号</a>
+        </div>
+    
+
+    
+        <div class="trm-footer-item">
+            <span>© 2023- 2024</span>
+            <span class="footer-separator"data-separator=" · "></span>
+            <span class="trm-accent-color">涛声依旧</span>
+        </div>
+    
+
+      
+
+    
+        <div class="trm-footer-item">
+            博客已萌萌哒运行 <span id="since" class="trm-accent-color"></span> 天
+        </div>
+     
+
+     
+</footer>
+
+<script>
+    function show_date_time () {
+        var BirthDay = new Date("02/02/2023 17:45:14");
+        var today = new Date();
+        var timeold = (today.getTime() - BirthDay.getTime());
+        var msPerDay = 24 * 60 * 60 * 1000
+        var day = Math.floor(timeold / msPerDay)
+        since.innerHTML = day
+    }
+    show_date_time()
+</script>
+ 
+                    <!-- footer end -->
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+            <!-- body end -->
+
+            <div class="trm-fixed-container" data-scroll data-scroll-sticky data-scroll-target=".locomotive-scroll__sticky-target" data-scroll-offset="-10">
+    
+        <div class="trm-fixed-btn" data-title="阅读模式" onclick="asyncFun.switchReadMode()">
+            <i class="iconfont fas fa-book-reader"></i>
+        </div>
+    
+    
+        <div class="trm-fixed-btn" data-title="单栏和双栏切换" onclick="asyncFun.switchSingleColumn()">
+            <i class="iconfont fas fa-arrows-alt-h"></i>
+        </div>
+    
+    <div id="trm-back-top" class="trm-fixed-btn" data-title="回到顶部">
+        <i class="iconfont fas fa-arrow-up"></i>
+    </div>
+</div>
+          </div>
+        </div>
+      </div>
+      <!-- scroll container end -->
+
+  </div>
+  <!-- app wrapper end -->
+
+  
+  <!-- Plugin -->
+
+
+
+
+    
+    
+<script src="https://unpkg.com/locomotive-scroll@4.1.4/dist/locomotive-scroll.min.js"></script>
+
+    
+<script src="https://unpkg.com/@fancyapps/ui@4.0/dist/fancybox.umd.js"></script>
+
+    
+
+    
+        <script src="/js/plugins/typing.js?v=2.0.3"></script>
+    
+
+    
+
+    <!-- 数学公式 -->
+    
+
+    <!-- 评论插件 -->
+    
+        
+
+        
+    
+
+
+
+<!-- CDN -->
+
+
+    
+
+    
+
+    
+
+
+
+
+    <!-- Service Worker -->
+    
+    <!-- baidu push -->
+    
+
+
+<script id="async-script" src="/js/main.js?v=2.0.3"></script>
+
+</body>
+
+</html>
